@@ -78,7 +78,7 @@ class image {
 		if (substr ($sourceFile, -5) == '.jpeg') {$inputFileExtension = '.jpg';}
 		
 		# Obtain the source image
-		switch ($inputFileExtension) {
+		switch (strtolower ($inputFileExtension)) {
 				
 			/* # GIF format
 			case '.gif':
