@@ -5,8 +5,8 @@ require_once ('pureContent.php');
 
 
 # Define a class containing image-related static methods
-class image {
-	
+class image
+{
 	# Wrapper function to create a photo gallery
 	function gallery ($directory = './', $imageGenerationScript = 'image.html', $width = 200, $showAttributes = true, $displayImmediately = true)
 	{
@@ -58,6 +58,59 @@ class image {
 		# End the HTML
 		$endHtml = "\n\n\t" . '</div>' . "\n";
 		if ($displayImmediately) {echo $endHtml;}
+		
+		# Return the compiled HTML in case that is needed
+		return $startHtml . $compiledHtml . $endHtml;
+	}
+	
+	
+	# Function to provide a gallery with comments underneath
+	function commentGallery ($comments, $smallVersionDirectory = 'thumbnails/', $filetype = '.jpg', $maxWidth = 400)
+	{
+		# Load the directory support library
+		require_once ('directories.php');
+		
+		# Get all files in the current directory, ensuring that the REQUEST_URI ends with a filename so that dirname works properly
+		$directory = dirname ($_SERVER['REQUEST_URI'] . ((substr ($_SERVER['REQUEST_URI'], -1) == '/') ? 'index.html' : ''));
+		
+		# Ensure the directory ends with a slash
+		if (substr ($directory, -1) != '/') {$directory .= '/';}
+		
+		# Define the supported extensions
+		$supportedFileTypes = array (/*'gif', */'jpg', 'jpeg', 'png');
+		
+		# Read the directory, including only supported file types (i.e. extensions)
+		$files = directories::listFiles ($directory, $supportedFileTypes);
+		
+		# Show a message if there are no files in the directory and exit the function
+		if (count ($files) < 1) {
+			$html = '<p>There are no images to view in this location.</p>';
+			return $html;
+		}
+		
+		# Start the HTML block
+		$startHtml = "\n\t" . '<div class="gallery">';
+		
+		# Loop through each file and construct the HTML
+		$compiledHtml = '';
+		foreach ($files as $file => $attributes) {
+			
+			# Get the image size
+			list ($width, $height, $type, $imageSize) = getimagesize ('./' . $smallVersionDirectory . $file);
+			
+			# Determine whether there is a comment (no array index or empty comment)
+			$isComment = (isSet ($comments[$file]) ? (!empty ($comments[$file]) ? true : false) : false);
+			
+			# Define the HTML
+			$compiledHtml .= "\n" . '
+			<div class="image" id="#image' . $attributes['name'] . '">
+				<a href="' . $file . '" target="_blank"><img src="' . $smallVersionDirectory . $file . '" ' . $imageSize . ' alt="Photograph" /></a>
+				<p>' . ($isComment ? $comments[$file] : '&nbsp;') . '</p>
+			</div>';
+		}
+		
+		# End the HTML
+		$endHtml = "\n\n\t" . '</div>' . "\n";
 		
 		# Return the compiled HTML in case that is needed
 		return $startHtml . $compiledHtml . $endHtml;
