@@ -65,7 +65,7 @@ class image
 	
 	
 	# Function to provide a gallery with comments underneath
-	function commentGallery ($comments, $smallVersionDirectory = 'thumbnails/', $filetype = '.jpg', $maxWidth = 400)
+	function commentGallery ($comments = array (), $smallVersionDirectory = 'thumbnails/', $filetype = '.jpg', $maxWidth = 400)
 	{
 		# Load the directory support library
 		require_once ('directories.php');
@@ -82,6 +82,9 @@ class image
 		# Read the directory, including only supported file types (i.e. extensions)
 		$files = directories::listFiles ($directory, $supportedFileTypes);
 		
+		# Sort the keys, enabling e.g. 030405b.jpg to come before 030405aa.jpg
+		uksort ($files, array ('image', 'imageNameSort'));
+		
 		# Show a message if there are no files in the directory and exit the function
 		if (count ($files) < 1) {
 			$html = '<p>There are no images to view in this location.</p>';
@@ -95,8 +98,15 @@ class image
 		$compiledHtml = '';
 		foreach ($files as $file => $attributes) {
 			
+			# Define the location and ensure the file exists
+			$location = './' . $smallVersionDirectory . $file;
+			if (!file_exists ($location)) {
+				echo "\n<p>Error: image $file not found.</p>";
+				continue;
+			}
+			
 			# Get the image size
-			list ($width, $height, $type, $imageSize) = getimagesize ('./' . $smallVersionDirectory . $file);
+			list ($width, $height, $type, $imageSize) = getimagesize ($location);
 			
 			# Determine whether there is a comment (no array index or empty comment)
 			$isComment = (isSet ($comments[$file]) ? (!empty ($comments[$file]) ? true : false) : false);
@@ -114,6 +124,30 @@ class image
 		
 		# Return the compiled HTML in case that is needed
 		return $startHtml . $compiledHtml . $endHtml;
+	}
+	
+	
+	# Helper function to sort by key length
+	function imageNameSort ($a, $b)
+	{
+		# If they are the same, return 0 [This should never arise]
+		if ($a == $b) {return 0;}
+		
+		# Validate and obtain matches for a pattern of the (i) 6-digit reverse-date (ii) letter(s) and (iii) [discarded] file extension
+		if ((!eregi ('([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)', $a, $matchesA)) || (!eregi ('([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)', $b, $matchesB))) {
+			return NULL;
+		}
+		
+		# Compare the numeric portion
+		if ($matchesA[1] < $matchesB[1]) {return -1;}
+		if ($matchesA[1] > $matchesB[1]) {return 1;}
+		
+		# Compare string length
+		if (strlen ($matchesA[2]) < strlen ($matchesB[2])) {return -1;}
+		if (strlen ($matchesA[2]) > strlen ($matchesB[2])) {return 1;}
+		
+		# Otherwise compare the strings
+		return strcmp ($matchesA[2], $matchesB[2]);
 	}
 	
 	
