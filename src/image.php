@@ -7,11 +7,14 @@ require_once ('pureContent.php');
 # Define a class containing image-related static methods
 class image
 {
-	# Wrapper function to create a photo gallery
-	function gallery ($directory = './', $imageGenerationScript = 'image.html', $width = 200, $showAttributes = true, $displayImmediately = true)
+	# Function to get a list of images in a directory
+	function getImageList ($directory)
 	{
 		# Load the directory support library
 		require_once ('directories.php');
+		
+		# Clean the supplied directory
+		$directory = urldecode ($directory);
 		
 		# Parse the specified directory so that it is always the directory from the server root
 		$directory = directories::parse ($directory);
@@ -22,108 +25,108 @@ class image
 		# Read the directory, including only supported file types (i.e. extensions)
 		$files = directories::listFiles ($directory, $supportedFileTypes);
 		
-		# Show a message if there are no files in the directory and exit the function
-		if (count ($files) < 1) {
-			$html ='<p>There are no images to view in this location.</p>';
-			if ($displayImmediately) {echo $html;}
-			return $html;
-		}
-		
-		# Start the HTML block
-		$startHtml = "\n\t" . '<div class="gallery">';
-		if ($displayImmediately) {echo $startHtml;}
-		
-		# Loop through each file and construct the HTML
-		$compiledHtml = '';
-		foreach ($files as $file => $attributes) {
-			
-			# Define the link
-			$link = $file;
-			
-			# Define the HTML
-			$html = "\n" . '
-			<div class="image">
-				<a href="' . $link . '" target="_blank"><img src="' . $imageGenerationScript . '?' . $width . ',' . str_replace (' ', '%20', $directory) . str_replace (' ', '%20', $file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>
-				' . (($showAttributes) ? '<p><strong>' . $file . '</strong> [' . round ($attributes['size'] / '1024', -1) . ' KB]</p>' : '')
-				. '<p>' . strftime ('%a %d/%b/%Y, %I:%M%p', $attributes['time']) . '</p>
-			</div>';
-			
-			# If necessary, display the HTML immediately
-			if ($displayImmediately) {echo $html;}
-			
-			# Also compile the HTML
-			$compiledHtml .= $html;
-		}
-		
-		# End the HTML
-		$endHtml = "\n\n\t" . '</div>' . "\n";
-		if ($displayImmediately) {echo $endHtml;}
-		
-		# Return the compiled HTML in case that is needed
-		return $startHtml . $compiledHtml . $endHtml;
+		# Return the list
+		return $files;
 	}
 	
 	
 	# Function to provide a gallery with comments underneath
-	function commentGallery ($comments = array (), $smallVersionDirectory = 'thumbnails/', $filetype = '.jpg', $maxWidth = 400)
+	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator')
 	{
-		# Load the directory support library
-		require_once ('directories.php');
-		
 		# Get all files in the current directory, ensuring that the REQUEST_URI ends with a filename so that dirname works properly
 		$directory = dirname ($_SERVER['REQUEST_URI'] . ((substr ($_SERVER['REQUEST_URI'], -1) == '/') ? 'index.html' : ''));
 		
 		# Ensure the directory ends with a slash
 		if (substr ($directory, -1) != '/') {$directory .= '/';}
 		
-		# Define the supported extensions
-		$supportedFileTypes = array (/*'gif', */'jpg', 'jpeg', 'png');
+		# Get the list of images in the directory
+		$files = image::getImageList ($directory);
 		
-		# Read the directory, including only supported file types (i.e. extensions)
-		$files = directories::listFiles ($directory, $supportedFileTypes);
+		# Show a message if there are no files in the directory and exit the function
+		if (!$files) {
+			return $html = '<p>There are no images to view in this location.</p>';
+		}
 		
 		# Sort the keys, enabling e.g. 030405b.jpg to come before 030405aa.jpg
 		uksort ($files, array ('image', 'imageNameSort'));
 		
-		# Show a message if there are no files in the directory and exit the function
-		if (count ($files) < 1) {
-			$html = '<p>There are no images to view in this location.</p>';
-			return $html;
+		# Start the HTML block
+		$html = "\n\t" . '<div class="gallery">';
+		
+		# Ensure the thumbnail directory exists if one is required (if not, thumbnails are dynamic and not cached)
+		if ($thumbnailsDirectory) {
+			$thumbnailServerDirectory = $_SERVER['DOCUMENT_ROOT'] . $directory . $thumbnailsDirectory;
+			if (!is_dir ($thumbnailServerDirectory)) {
+				if (!mkdir ($thumbnailServerDirectory, 0777)) { /* 0777 is explicitly stated due to 'wrong parameter count' error with PHP 4.1.2) */
+					return $html = '<p class="warning">Error: The thumbnail directory does not exist and could not be created.</p>';
+				}
+			}
 		}
 		
-		# Start the HTML block
-		$startHtml = "\n\t" . '<div class="gallery">';
-		
 		# Loop through each file and construct the HTML
-		$compiledHtml = '';
 		foreach ($files as $file => $attributes) {
 			
-			# Define the location and ensure the file exists
-			$location = './' . $smallVersionDirectory . $file;
-			if (!file_exists ($location)) {
-				echo "\n<p>Error: image $file not found.</p>";
-				continue;
+			# Use/create physical thumbnails if required
+			if ($thumbnailsDirectory) {
+				
+				# Define the thumbnail location
+				$thumbnailLocation = $directory . $thumbnailsDirectory . $file;
+				
+				# If there is no thumbnail, make one
+				if (!file_exists ($_SERVER['DOCUMENT_ROOT'] . $thumbnailLocation)) {
+					
+					# If there is no image resizing support, say so
+					if (!extension_loaded ('gd') || !function_exists ('gd_info')) {
+						return $html = '<p class="warning">Error: This server does not appear to support GD2 image resizing and so thumbnails must be created manually.</p>';
+					}
+					
+					# Determine the image location
+					$imageLocation = $directory . $file;
+					
+					# Get the size of the main image
+					list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
+					
+					# Attempt to resize; if this fails, do not add the image to the gallery
+					if (!image::resize ($imageLocation, $attributes['extension'], $width, $height, $thumbnailLocation)) {
+						continue;
+					}
+				}
+				
+				# Get the image size
+				list ($width, $height, $type, $imageSize) = getimagesize ($_SERVER['DOCUMENT_ROOT'] . $thumbnailLocation);
+				
+				# Define the link
+				$link = '<a href="' . $file . '" target="_blank"><img src="' . $thumbnailsDirectory . $file . '" ' . $imageSize . ' alt="Photograph" /></a>';
+			} else {
+				
+				# Get the width of the new image
+				list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
+				
+				# Define the link
+				$link = '<a href="' . $file . '" target="_blank"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . str_replace (' ', '%20', $file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
 			}
 			
-			# Get the image size
-			list ($width, $height, $type, $imageSize) = getimagesize ($location);
-			
-			# Determine whether there is a comment (no array index or empty comment)
-			$isComment = (isSet ($comments[$file]) ? (!empty ($comments[$file]) ? true : false) : false);
+			# Define the caption
+			if ($captions === true) {
+				$caption = '<strong>' . $file . '</strong> [' . round ($attributes['size'] / '1024', -1) . ' KB]<br />' . strftime ('%a %d/%b/%Y, %l:%M%p', $attributes['time']);
+			} else {
+				# Set the caption if a comment exists
+				$caption = (isSet ($captions[$file]) ? $captions[$file] : '&nbsp;');
+			}
 			
 			# Define the HTML
-			$compiledHtml .= "\n" . '
+			$html .= "\n" . '
 			<div class="image" id="#image' . $attributes['name'] . '">
-				<a href="' . $file . '" target="_blank"><img src="' . $smallVersionDirectory . $file . '" ' . $imageSize . ' alt="Photograph" /></a>
-				<p>' . ($isComment ? $comments[$file] : '&nbsp;') . '</p>
+				' . $link . '
+				<p>' . $caption . '</p>
 			</div>';
 		}
 		
 		# End the HTML
-		$endHtml = "\n\n\t" . '</div>' . "\n";
+		$html .= "\n\n\t</div>\n";
 		
 		# Return the compiled HTML in case that is needed
-		return $startHtml . $compiledHtml . $endHtml;
+		return $html;
 	}
 	
 	
@@ -152,10 +155,13 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '')
+	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false)
 	{
 		# Decode the $sourceFile to remove HTML entities
 		$sourceFile = str_replace ('//', '/', $_SERVER['DOCUMENT_ROOT'] . str_replace ('%20', ' ', $sourceFile));
+		if ($outputFile) {
+			$outputFile = str_replace ('//', '/', $_SERVER['DOCUMENT_ROOT'] . str_replace ('%20', ' ', $outputFile));
+		}
 		
 		# Check that the file exists for security reasons
 		if (!file_exists ($sourceFile)) {echo '<p>Error: the selected file could not be found.</p>'; return false;}
@@ -218,14 +224,22 @@ class image
 			# JPG format
 			case 'jpg':
 			case 'jpeg':
-				header ("Content-Type: image/jpg");
-				ImageJPEG ($output);
+				if (!$outputFile) {
+					header ("Content-Type: image/jpg");
+					ImageJPEG ($output);
+				} else {
+					ImageJPEG ($output, $outputFile);
+				}
 				break;
 				
 			# PNG format
 			case 'png':
-				header ("Content-Type: image/png");
-				ImagePNG ($output);
+				if (!$outputFile) {
+					header ("Content-Type: image/png");
+					ImagePNG ($output);
+				} else {
+					ImagePNG ($output, $outputFile);
+				}
 				break;
 				
 			# If an invalid format has been requested, return false
@@ -233,6 +247,9 @@ class image
 				 echo '<p>Error: an unsupported output format was requested.</p>';
 				 return false;
 		}
+		
+		# Return true to signal success
+		return true;
 	}
 	
 	
@@ -317,6 +334,106 @@ class image
 		
 		# Return the HTML
 		return $html;
+	}
+	
+	
+	/* Function not worth bothering with, because ImageCopyResampled doesn't have a workaround
+	# Wrapper function for the imageCreate function (because PHP may not be compiled with GD2)
+	function imageCreateWrapper ($width, $height)
+	{
+		# Determine the GD version
+		#!# Check for function exists misses out GD2 compiled for PHP 4.1-4.3
+		if (!function_exists ('gd_info')) {
+			$gd2Supported = false;
+		} else {
+			$gdInfo = gd_info ();
+			$gd2Supported = (strstr ($gdInfo['GD Version'], '2.') !== false);
+		}
+		
+		# Version if GD2 support is present
+		if ($gd2Supported) {
+			return $output = ImageCreateTrueColor ($width, $height);
+		}
+		
+		# Version if GD2 support is not present
+		$output = imagecreate ($width, $height);
+		$temporaryFile = './temporary.jpg';
+		imageJPEG ($output, $temporaryFile);
+		$output = imagecreatefromjpeg ($temporaryFile);
+		unlink ($temporaryFile);
+		return $output;
+	}
+	*/
+	
+	
+	# Function to work out the dimensions of a scaled image
+	function scale ($imageLocation, $size)
+	{
+		# Get the image's height and width
+		list ($width, $height, $type, $imageSize) = getimagesize ($imageLocation);
+		
+		# Perform the scalings
+		if ($width > $height) {
+			$scaledWidth = $size;
+			$scaledHeight = $height * ($scaledWidth / $width);
+		} else {
+			$scaledHeight = $size;
+			$scaledWidth = $width * ($scaledHeight / $height);
+		}
+		
+		# Return the width and height
+		return array ($scaledWidth, $scaledHeight);
+	}
+	
+	
+	# Function to perform image renaming; WARNING: Only use if you know what you're doing!
+	function renaming ($directory, $secondsOffset = 21600, $sortByDateNotName = false)
+	{
+		# Get the files
+		$files = image::getImageList ($directory);
+		if (!$files) {return false;}
+		
+		# Get the date for each file
+		foreach ($files as $file => $attributes) {
+			$sortedFiles[$file] = $attributes['time'];
+		}
+		
+		# Sort by date/time if necessary
+		if ($sortByDateNotName) {asort ($sortedFiles);}
+		
+		# Assign the date for each
+		foreach ($sortedFiles as $file => $timestamp) {
+			
+			# Offset the time, so that e.g. for 21600, a new day 'starts' at 6am (21600 seconds past midnight)
+			$timestamp -= $secondsOffset;
+			
+			# Assign the file date
+			$fileDate = date ('ymd', $timestamp);
+			
+			# Start an entry for this date if not already present, or increment the character if not
+			if (!isSet ($assignedNames[$fileDate])) {
+				$assignedNames[$fileDate] = 'a';
+			} else {
+				$assignedNames[$fileDate]++;
+			}
+			
+			# Convert the date tally to alphanumeric
+			$base = 26;
+			$set = floor ($assignedNames[$fileDate] / $base);
+			$setPrefix = ($set ? chr (96 + $set) : '');
+			
+			# Construct the file extension
+			$extension = '.' . strtolower ($files[$file]['extension']);
+			
+			# Construct the filename
+			$renamedFiles[$file] = $fileDate . $setPrefix . $assignedNames[$fileDate] . $extension;
+		}
+		
+		# Rename each file, or stop if there is a problem
+		foreach ($renamedFiles as $old => $new) {
+			if (!rename ($directory . $old, $directory . $new)) {return false;}
+			echo "\nSuccessfully renamed: {$directory}<strong>{$old}</strong> &raquo; {$directory}<strong>{$new}</strong><br />";
+		}
 	}
 }
 
