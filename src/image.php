@@ -31,8 +31,9 @@ class image
 	
 	
 	# Function to provide a gallery with comments underneath
-	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator')
+	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false)
 	{
+		if ($orderByCaptionOrder) {echo $orderByCaptionOrder;}
 		# Get all files in the current directory, ensuring that the REQUEST_URI ends with a filename so that dirname works properly
 		$directory = dirname ($_SERVER['REQUEST_URI'] . ((substr ($_SERVER['REQUEST_URI'], -1) == '/') ? 'index.html' : ''));
 		
@@ -96,14 +97,14 @@ class image
 				list ($width, $height, $type, $imageSize) = getimagesize ($_SERVER['DOCUMENT_ROOT'] . $thumbnailLocation);
 				
 				# Define the link
-				$link = '<a href="' . $file . '" target="_blank"><img src="' . $thumbnailsDirectory . $file . '" ' . $imageSize . ' alt="Photograph" /></a>';
+				$link = '<a href="' . rawurlencode ($file) . '" target="_blank"><img src="' . str_replace (' ', '%20', $thumbnailsDirectory) . rawurlencode ($file) . '" ' . $imageSize . ' alt="Photograph" /></a>';
 			} else {
 				
 				# Get the width of the new image
 				list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
 				
 				# Define the link
-				$link = '<a href="' . $file . '" target="_blank"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . str_replace (' ', '%20', $file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
+				$link = '<a href="' . rawurlencode ($file) . '" target="_blank"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . rawurlencode ($file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
 			}
 			
 			# Define the caption
@@ -115,8 +116,9 @@ class image
 			}
 			
 			# Define the HTML
+			#!# Find a more generic way of making id attributes safe
 			$html .= "\n" . '
-			<div class="image" id="#image' . $attributes['name'] . '">
+			<div class="image" id="image' . str_replace (array (' ', '+', "'", ), '__', $attributes['name']) . '">
 				' . $link . '
 				<p>' . $caption . '</p>
 			</div>';
@@ -126,6 +128,46 @@ class image
 		$html .= "\n\n\t</div>\n";
 		
 		# Return the compiled HTML in case that is needed
+		return $html;
+	}
+	
+	
+	# Function to surround an image with an HTML page
+	/* # Use mod_rewrite with something like:
+	   # RewriteEngine On
+	   # RewriteRule ^/locationOfPagesAndImages/([0-9]+).([0-9]+).html$ /images/pagemaker.html?image=$1.$2.png [passthrough]
+	*/
+	function pagemaker ()
+	{
+		# Get the image
+		$image = (isSet ($_GET['image']) ? $_GET['image'] : '');
+		
+		# Ensure the image type is supported
+		if (!eregi ('.(jpg|jpeg|gif|png)', $image)) {
+			#!# Change to throwing 404
+			echo "<p>\nThat image format is not supported.</p>";
+			return false;
+		}
+		
+		# Construct the filename
+		$url = dirname ($_SERVER['REQUEST_URI']) . '/' . $image;
+		$file = $_SERVER['DOCUMENT_ROOT'] . $url;
+		
+		# If the file does not exist, throw a 404
+		if (!file_exists ($file)) {
+			#!# Change to throwing 404
+			echo "<p>\nThere is no such image.</p>";
+			return false;
+		}
+		
+		# Get the image size
+		$file = str_replace ('%20', ' ', $file);
+		list ($width, $height, $type, $imageSizeHtml) = getimagesize ($file);
+		
+		# Create the image HTML
+		$html = "\n<img src=\"{$url}\" {$imageSizeHtml} alt=\"Image\" />";
+		
+		# Return the HTML
 		return $html;
 	}
 	
