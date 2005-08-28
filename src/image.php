@@ -33,15 +33,23 @@ class image
 	# Function to provide a gallery with comments underneath
 	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false)
 	{
-		if ($orderByCaptionOrder) {echo $orderByCaptionOrder;}
-		# Get all files in the current directory, ensuring that the REQUEST_URI ends with a filename so that dirname works properly
-		$directory = dirname ($_SERVER['REQUEST_URI'] . ((substr ($_SERVER['REQUEST_URI'], -1) == '/') ? 'index.html' : ''));
+		# Allow the script to take longer to run (particularly the first time)
+		ini_set ('max_execution_time', 120);
 		
-		# Ensure the directory ends with a slash
+//		if ($orderByCaptionOrder) {echo $orderByCaptionOrder;}
+		
+		# Define the current directory, ensuring it ends with a slash and ensuring that spaces are converted
+		$directory = dirname ($_SERVER['REQUEST_URI'] . ((substr ($_SERVER['REQUEST_URI'], -1) == '/') ? 'index.html' : ''));
 		if (substr ($directory, -1) != '/') {$directory .= '/';}
+		$directory = str_replace ('%20', ' ', $directory);
+		
+		# If there is a (relative) thumbnail directory, prepend the current directly onto it
+		if (substr ($thumbnailsDirectory, 0, 1) != '/') {
+			$thumbnailsDirectory = $directory . $thumbnailsDirectory;
+		}
 		
 		# Get the list of images in the directory
-		$files = image::getImageList ($directory);
+		$files = self::getImageList ($directory);
 		
 		# Show a message if there are no files in the directory and exit the function
 		if (!$files) {
@@ -56,13 +64,12 @@ class image
 		
 		# Ensure the thumbnail directory exists if one is required (if not, thumbnails are dynamic and not cached)
 		if ($thumbnailsDirectory) {
-			$thumbnailServerDirectory = $_SERVER['DOCUMENT_ROOT'] . $directory . $thumbnailsDirectory;
-			if (!is_dir ($thumbnailServerDirectory)) {
-				if (!mkdir ($thumbnailServerDirectory, 0777)) { /* 0777 is explicitly stated due to 'wrong parameter count' error with PHP 4.1.2) */
-					return $html = '<p class="warning">Error: The thumbnail directory does not exist and could not be created.</p>';
-				}
+			$thumbnailServerDirectory = $_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory;
+			if (!is_dir ($thumbnailServerDirectory) && is_writable ($_SERVER['DOCUMENT_ROOT'] . $directory)) {
+				mkdir ($thumbnailServerDirectory, 0777);
 			}
 		}
+		if (!is_dir ($thumbnailServerDirectory)) {$thumbnailsDirectory = false;}
 		
 		# Loop through each file and construct the HTML
 		foreach ($files as $file => $attributes) {
@@ -70,11 +77,8 @@ class image
 			# Use/create physical thumbnails if required
 			if ($thumbnailsDirectory) {
 				
-				# Define the thumbnail location
-				$thumbnailLocation = $directory . $thumbnailsDirectory . $file;
-				
 				# If there is no thumbnail, make one
-				if (!file_exists ($_SERVER['DOCUMENT_ROOT'] . $thumbnailLocation)) {
+				if (!file_exists ($_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory . $file)) {
 					
 					# If there is no image resizing support, say so
 					if (!extension_loaded ('gd') || !function_exists ('gd_info')) {
@@ -85,23 +89,23 @@ class image
 					$imageLocation = $directory . $file;
 					
 					# Get the size of the main image
-					list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
+					list ($width, $height) = self::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
 					
 					# Attempt to resize; if this fails, do not add the image to the gallery
-					if (!image::resize ($imageLocation, $attributes['extension'], $width, $height, $thumbnailLocation)) {
+					if (!self::resize ($imageLocation, $attributes['extension'], $width, $height, $thumbnailsDirectory . $file)) {
 						continue;
 					}
 				}
 				
 				# Get the image size
-				list ($width, $height, $type, $imageSize) = getimagesize ($_SERVER['DOCUMENT_ROOT'] . $thumbnailLocation);
+				list ($width, $height, $type, $imageSize) = getimagesize ($_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory . $file);
 				
 				# Define the link
 				$link = '<a href="' . rawurlencode ($file) . '" target="_blank"><img src="' . str_replace (' ', '%20', $thumbnailsDirectory) . rawurlencode ($file) . '" ' . $imageSize . ' alt="Photograph" /></a>';
 			} else {
 				
 				# Get the width of the new image
-				list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
+				list ($width, $height) = self::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
 				
 				# Define the link
 				$link = '<a href="' . rawurlencode ($file) . '" target="_blank"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . rawurlencode ($file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
@@ -142,6 +146,10 @@ class image
 		# Get the image
 		$image = (isSet ($_GET['image']) ? $_GET['image'] : '');
 		
+		# Get root
+		$root = (isSet ($_GET['root']) ? $_GET['root'] : '');
+		$root = ((substr ($root, -1) == '/') ? substr ($root, 0, -1) : $root);
+		
 		# Ensure the image type is supported
 		if (!eregi ('.(jpg|jpeg|gif|png)', $image)) {
 			#!# Change to throwing 404
@@ -151,7 +159,7 @@ class image
 		
 		# Construct the filename
 		$url = dirname ($_SERVER['REQUEST_URI']) . '/' . $image;
-		$file = $_SERVER['DOCUMENT_ROOT'] . $url;
+		$file = ($root ? $root : $_SERVER['DOCUMENT_ROOT']) . $url;
 		
 		# If the file does not exist, throw a 404
 		if (!file_exists ($file)) {
@@ -197,10 +205,10 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false)
+	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false)
 	{
 		# Decode the $sourceFile to remove HTML entities
-		$sourceFile = str_replace ('//', '/', $_SERVER['DOCUMENT_ROOT'] . str_replace ('%20', ' ', $sourceFile));
+		$sourceFile = str_replace ('//', '/', ($imageIsServerLocation ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFile));
 		if ($outputFile) {
 			$outputFile = str_replace ('//', '/', $_SERVER['DOCUMENT_ROOT'] . str_replace ('%20', ' ', $outputFile));
 		}
@@ -255,7 +263,7 @@ class image
 		ImageCopyResampled ($output, $sourceFile, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
 		
 		# Send the image
-		switch ($outputFormat) {
+		switch (strtolower ($outputFormat)) {
 				
 			/* # GIF format
 			case 'gif':
@@ -432,7 +440,7 @@ class image
 	function renaming ($directory, $secondsOffset = 21600, $sortByDateNotName = false)
 	{
 		# Get the files
-		$files = image::getImageList ($directory);
+		$files = self::getImageList ($directory);
 		if (!$files) {return false;}
 		
 		# Get the date for each file
