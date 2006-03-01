@@ -31,7 +31,7 @@ class image
 	
 	
 	# Function to provide a gallery with comments underneath
-	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false)
+	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false, $exclude = array ())
 	{
 		# Allow the script to take longer to run (particularly the first time)
 		ini_set ('max_execution_time', 120);
@@ -74,6 +74,9 @@ class image
 		# Loop through each file and construct the HTML
 		foreach ($files as $file => $attributes) {
 			
+			# Skip if excluded
+			if (in_array ($file, $exclude)) {continue;}
+			
 			# Use/create physical thumbnails if required
 			if ($thumbnailsDirectory) {
 				
@@ -101,14 +104,14 @@ class image
 				list ($width, $height, $type, $imageSize) = getimagesize ($_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory . $file);
 				
 				# Define the link
-				$link = '<a href="' . rawurlencode ($file) . '" target="_blank"><img src="' . str_replace (' ', '%20', $thumbnailsDirectory) . rawurlencode ($file) . '" ' . $imageSize . ' alt="Photograph" /></a>';
+				$link = '<a href="' . rawurlencode ($file) . '" target="_blank" rel="lightbox[group]"><img src="' . str_replace (' ', '%20', $thumbnailsDirectory) . rawurlencode ($file) . '" ' . $imageSize . ' alt="Photograph" /></a>';
 			} else {
 				
 				# Get the width of the new image
 				list ($width, $height) = self::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
 				
 				# Define the link
-				$link = '<a href="' . rawurlencode ($file) . '" target="_blank"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . rawurlencode ($file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
+				$link = '<a href="' . rawurlencode ($file) . '" target="_blank" rel="lightbox[group]"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . rawurlencode ($file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
 			}
 			
 			# Define the caption
@@ -205,7 +208,7 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false)
+	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false, $watermark = false)
 	{
 		# Decode the $sourceFile to remove HTML entities
 		$sourceFile = str_replace ('//', '/', ($imageIsServerLocation ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFile));
@@ -223,10 +226,10 @@ class image
 		# Obtain the source image
 		switch (strtolower ($inputFileExtension)) {
 				
-			/* # GIF format
+			# GIF format
 			case '.gif':
 				$sourceFile = ImageCreateFromGIF ($sourceFile);
-				break; */
+				break;
 				
 			# JPG format
 			case '.jpg':
@@ -262,14 +265,24 @@ class image
 		$output = ImageCreateTrueColor ($newWidth, $newHeight);
 		ImageCopyResampled ($output, $sourceFile, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
 		
+		# Add any watermark
+		if ($watermark && is_callable ($watermark)) {
+			#!# Needs to work for classes - is_callable is basically a mess
+			$watermark (&$output, $newHeight);
+		}
+		
 		# Send the image
 		switch (strtolower ($outputFormat)) {
 				
-			/* # GIF format
+			# GIF format
 			case 'gif':
-				header ("Content-Type: image/gif");
-				ImageGIF ($output);
-				break; */
+				if (!$outputFile) {
+					header ("Content-Type: image/gif");
+					ImageGIF ($output);
+				} else {
+					ImageGIF ($output, $outputFile);
+				}
+				break;
 				
 			# JPG format
 			case 'jpg':
@@ -484,6 +497,34 @@ class image
 			if (!rename ($directory . $old, $directory . $new)) {return false;}
 			echo "\nSuccessfully renamed: {$directory}<strong>{$old}</strong> &raquo; {$directory}<strong>{$new}</strong><br />";
 		}
+	}
+	
+	
+	# Function to return the image dimensions of an image when scaled
+	function scaledImageDimensions ($width, $height, $maximumDimension)
+	{
+		# Ensure the height and maximum dimension is legal or stop execution
+		if (!is_numeric ($maximumDimension) || $maximumDimension == 0) {return false;}
+		if (!is_numeric ($height) || $height == 0) {return false;}
+		
+		# Compute the new height and width, scaling down only if the original is greater than the base size
+		$ratio = ($width / $height);
+		if ($width > $height) {
+			if ($width > $maximumDimension) {
+				$width = $maximumDimension;
+				$height = $width / $ratio;
+			}
+		} else {
+			if ($height > $maximumDimension) {
+				$height = $maximumDimension;
+				$width = $height * $ratio;
+			}
+		}
+		$width = round ($width);
+		$height = round ($height);
+		
+		# Return the new width and height
+		return array ($width, $height);
 	}
 }
 
