@@ -226,10 +226,10 @@ class image
 		# Obtain the source image
 		switch (strtolower ($inputFileExtension)) {
 				
-			# GIF format
+			/* # GIF format
 			case '.gif':
 				$sourceFile = ImageCreateFromGIF ($sourceFile);
-				break;
+				break; */
 				
 			# JPG format
 			case '.jpg':
@@ -274,15 +274,11 @@ class image
 		# Send the image
 		switch (strtolower ($outputFormat)) {
 				
-			# GIF format
+			/* # GIF format
 			case 'gif':
-				if (!$outputFile) {
-					header ("Content-Type: image/gif");
-					ImageGIF ($output);
-				} else {
-					ImageGIF ($output, $outputFile);
-				}
-				break;
+				header ("Content-Type: image/gif");
+				ImageGIF ($output);
+				break; */
 				
 			# JPG format
 			case 'jpg':
