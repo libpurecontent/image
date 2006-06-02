@@ -208,7 +208,7 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false, $watermark = false, $cache = false)
+	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false, $watermark = false)
 	{
 		# Decode the $sourceFile to remove HTML entities
 		$sourceFile = str_replace ('//', '/', ($imageIsServerLocation ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFile));
@@ -271,44 +271,37 @@ class image
 			$watermark (&$output, $newHeight);
 		}
 		
-		# Ensure the directory exists
-		if ($outputFile) {
-			if (!is_dir (dirname ($outputFile))) {
-				mkdir (dirname ($outputFile));
-			}
-		}
-		
 		# Send the image
 		switch (strtolower ($outputFormat)) {
-			
+				
 			# GIF format
 			case 'gif':
-				if ($outputFile) {
-					ImageGIF ($output, $outputFile);
-				} else {
+				if (!$outputFile) {
 					header ("Content-Type: image/gif");
 					ImageGIF ($output);
+				} else {
+					ImageGIF ($output, $outputFile);
 				}
 				break;
 				
 			# JPG format
 			case 'jpg':
 			case 'jpeg':
-				if ($outputFile) {
-					ImageJPEG ($output, $outputFile);
-				} else {
+				if (!$outputFile) {
 					header ("Content-Type: image/jpg");
 					ImageJPEG ($output);
+				} else {
+					ImageJPEG ($output, $outputFile);
 				}
 				break;
 				
 			# PNG format
 			case 'png':
-				if ($outputFile) {
-					ImagePNG ($output, $outputFile);
-				} else {
+				if (!$outputFile) {
 					header ("Content-Type: image/png");
 					ImagePNG ($output);
+				} else {
+					ImagePNG ($output, $outputFile);
 				}
 				break;
 				
