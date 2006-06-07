@@ -210,122 +210,6 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resizeOLD ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false, $watermark = false, $cache = false)
-	{
-		# Decode the $sourceFile to remove HTML entities
-		$sourceFile = str_replace ('//', '/', ($imageIsServerLocation ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFile));
-		if ($outputFile) {
-			$outputFile = str_replace ('//', '/', $_SERVER['DOCUMENT_ROOT'] . str_replace ('%20', ' ', $outputFile));
-		}
-		
-		# Check that the file exists for security reasons
-		if (!file_exists ($sourceFile)) {echo '<p>Error: the selected file could not be found.</p>'; return false;}
-		
-		# Obtain the input format by taking the file extension, allowing for .jpeg and .jpg for JPG format
-		$inputFileExtension = substr ($sourceFile, -4);
-		if (substr ($sourceFile, -5) == '.jpeg') {$inputFileExtension = '.jpg';}
-		
-		# Obtain the source image
-		switch (strtolower ($inputFileExtension)) {
-				
-			# GIF format
-			case '.gif':
-				$sourceFile = ImageCreateFromGIF ($sourceFile);
-				break;
-				
-			# JPG format
-			case '.jpg':
-				$sourceFile = ImageCreateFromJPEG ($sourceFile);
-				break;
-				
-			# PNG format
-			case '.png':
-				$sourceFile = ImageCreateFromPNG ($sourceFile);
-				break;
-				
-			# If an invalid format has been requested, return false
-			default:
-				 echo '<p>Error: an unsupported input format was requested.</p>';
-				 return false;
-		}
-		
-		# Obtain the height and width
-		$originalWidth = ImageSx ($sourceFile);
-		$originalHeight = ImageSy ($sourceFile);
-		
-		# Ensure that a valid width and height have been entered
-		if (!is_numeric ($newWidth) && !is_numeric ($newHeight)) {
-			$newWidth = $originalWidth;
-			$newHeight = $originalHeight;
-		}
-		
-		# Assign the width and height, proportionally if necessary
-		$newWidth = (is_numeric ($newWidth) ? $newWidth : (($newHeight / $originalHeight) * $originalWidth));
-		$newHeight = (is_numeric ($newHeight) ? $newHeight : (($newWidth / $originalWidth) * $originalHeight));
-		
-		# Create the resized image
-		$output = ImageCreateTrueColor ($newWidth, $newHeight);
-		ImageCopyResampled ($output, $sourceFile, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
-		
-		# Add any watermark
-		if ($watermark && is_callable ($watermark)) {
-			#!# Needs to work for classes - is_callable is basically a mess
-			$watermark (&$output, $newHeight);
-		}
-		
-		# Ensure the directory exists
-		if ($outputFile) {
-			if (!is_dir (dirname ($outputFile))) {
-				mkdir (dirname ($outputFile));
-			}
-		}
-		
-		# Send the image
-		switch (strtolower ($outputFormat)) {
-			
-			# GIF format
-			case 'gif':
-				if ($outputFile) {
-					ImageGIF ($output, $outputFile);
-				} else {
-					header ("Content-Type: image/gif");
-					ImageGIF ($output);
-				}
-				break;
-				
-			# JPG format
-			case 'jpg':
-			case 'jpeg':
-				if ($outputFile) {
-					ImageJPEG ($output, $outputFile);
-				} else {
-					header ("Content-Type: image/jpg");
-					ImageJPEG ($output);
-				}
-				break;
-				
-			# PNG format
-			case 'png':
-				if ($outputFile) {
-					ImagePNG ($output, $outputFile);
-				} else {
-					header ("Content-Type: image/png");
-					ImagePNG ($output);
-				}
-				break;
-				
-			# If an invalid format has been requested, return false
-			default:
-				 echo '<p>Error: an unsupported output format was requested.</p>';
-				 return false;
-		}
-		
-		# Return true to signal success
-		return true;
-	}
-	
-	
-	# Function to resize an image; supported input and output formats are: jpg, png
 	function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $inputImageIsServerLocation = false, $watermark = false)
 	{
 		# Decode the $sourceFile to remove HTML entities
@@ -343,12 +227,14 @@ class image
 		# Ensure the output file directory exists if files are being outputted
 		if ($outputFile) {
 			if (!is_dir ($dirname = dirname ($outputFile))) {
-				mkdir ($dirname);
+				umask (0000);
+				mkdir ($dirname, 0770, true);
 			}
 		}
 		
 		# Obtain the source image file extension
 		$inputFileExtension = strtolower (substr (strrchr ($sourceFileName, '.'), 1));
+		$outputFormat = strtolower ($outputFormat);
 		
 		# Ensure the format is supported
 		$supportedExtensions = array ('jpeg', 'gif', 'png');
@@ -358,13 +244,12 @@ class image
 		if ($outputFormat == 'jpg') {$outputFormat = 'jpeg';}
 		if ($outputFormat == 'tif') {$outputFormat = 'tiff';}
 		if (!in_array ($inputFileExtension, $supportedExtensions)) {
-			 echo '<p>Error: an unsupported input format was requested.</p>';
-			 return false;
+			echo "\n<p>Error: an unsupported input format ({$inputFileExtension}) was requested.</p>";
+			return false;
 		}
-		
 		if (!in_array ($outputFormat, $supportedExtensions)) {
-			 echo '<p>Error: an unsupported output format was requested.</p>';
-			 return false;
+			echo "\n<p>Error: an unsupported output format ({$outputFormat}) was requested.</p>";
+			return false;
 		}
 		
 		# Obtain the height and width of the source image file
@@ -426,7 +311,11 @@ class image
 			
 			# Create the image
 			$functionName = 'Image' . $inputFileExtension;
-			$functionName ($output, $outputFile);
+			if ($outputFile) {
+				$functionName ($output, $outputFile);
+			} else {
+				$functionName ($output);
+			}
 		}
 		
 		# Return true to signal success
