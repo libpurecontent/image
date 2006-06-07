@@ -44,8 +44,10 @@ class image
 		$directory = str_replace ('%20', ' ', $directory);
 		
 		# If there is a (relative) thumbnail directory, prepend the current directly onto it
-		if (substr ($thumbnailsDirectory, 0, 1) != '/') {
-			$thumbnailsDirectory = $directory . $thumbnailsDirectory;
+		if ($thumbnailsDirectory) {
+			if (substr ($thumbnailsDirectory, 0, 1) != '/') {
+				$thumbnailsDirectory = $directory . $thumbnailsDirectory;
+			}
 		}
 		
 		# Get the list of images in the directory
@@ -68,8 +70,8 @@ class image
 			if (!is_dir ($thumbnailServerDirectory) && is_writable ($_SERVER['DOCUMENT_ROOT'] . $directory)) {
 				mkdir ($thumbnailServerDirectory, 0777);
 			}
+			if (!is_dir ($thumbnailServerDirectory)) {$thumbnailsDirectory = false;}
 		}
-		if (!is_dir ($thumbnailServerDirectory)) {$thumbnailsDirectory = false;}
 		
 		# Loop through each file and construct the HTML
 		foreach ($files as $file => $attributes) {
@@ -208,7 +210,7 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resize ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false, $watermark = false)
+	function resizeOLD ($sourceFile, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $imageIsServerLocation = false, $watermark = false, $cache = false)
 	{
 		# Decode the $sourceFile to remove HTML entities
 		$sourceFile = str_replace ('//', '/', ($imageIsServerLocation ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFile));
@@ -271,37 +273,44 @@ class image
 			$watermark (&$output, $newHeight);
 		}
 		
+		# Ensure the directory exists
+		if ($outputFile) {
+			if (!is_dir (dirname ($outputFile))) {
+				mkdir (dirname ($outputFile));
+			}
+		}
+		
 		# Send the image
 		switch (strtolower ($outputFormat)) {
-				
+			
 			# GIF format
 			case 'gif':
-				if (!$outputFile) {
+				if ($outputFile) {
+					ImageGIF ($output, $outputFile);
+				} else {
 					header ("Content-Type: image/gif");
 					ImageGIF ($output);
-				} else {
-					ImageGIF ($output, $outputFile);
 				}
 				break;
 				
 			# JPG format
 			case 'jpg':
 			case 'jpeg':
-				if (!$outputFile) {
+				if ($outputFile) {
+					ImageJPEG ($output, $outputFile);
+				} else {
 					header ("Content-Type: image/jpg");
 					ImageJPEG ($output);
-				} else {
-					ImageJPEG ($output, $outputFile);
 				}
 				break;
 				
 			# PNG format
 			case 'png':
-				if (!$outputFile) {
+				if ($outputFile) {
+					ImagePNG ($output, $outputFile);
+				} else {
 					header ("Content-Type: image/png");
 					ImagePNG ($output);
-				} else {
-					ImagePNG ($output, $outputFile);
 				}
 				break;
 				
@@ -309,6 +318,115 @@ class image
 			default:
 				 echo '<p>Error: an unsupported output format was requested.</p>';
 				 return false;
+		}
+		
+		# Return true to signal success
+		return true;
+	}
+	
+	
+	# Function to resize an image; supported input and output formats are: jpg, png
+	function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $inputImageIsServerLocation = false, $watermark = false)
+	{
+		# Decode the $sourceFile to remove HTML entities
+		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerLocation ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFileName));
+		if ($outputFile) {
+			$outputFile = str_replace ('//', '/', $_SERVER['DOCUMENT_ROOT'] . str_replace ('%20', ' ', $outputFile));
+		}
+		
+		# Check that the file exists
+		if (!file_exists ($sourceFileName)) {
+			echo '<p>Error: the selected file could not be found.</p>';
+			return false;
+		}
+		
+		# Ensure the output file directory exists if files are being outputted
+		if ($outputFile) {
+			if (!is_dir ($dirname = dirname ($outputFile))) {
+				mkdir ($dirname);
+			}
+		}
+		
+		# Obtain the source image file extension
+		$inputFileExtension = strtolower (substr (strrchr ($sourceFileName, '.'), 1));
+		
+		# Ensure the format is supported
+		$supportedExtensions = array ('jpeg', 'gif', 'png');
+		if (extension_loaded ('magickwand')) {$supportedExtensions[] = 'tiff';}	// TIFF support only available in ImageMagick
+		if ($inputFileExtension == 'jpg') {$inputFileExtension = 'jpeg';}
+		if ($inputFileExtension == 'tif') {$inputFileExtension = 'tiff';}
+		if ($outputFormat == 'jpg') {$outputFormat = 'jpeg';}
+		if ($outputFormat == 'tif') {$outputFormat = 'tiff';}
+		if (!in_array ($inputFileExtension, $supportedExtensions)) {
+			 echo '<p>Error: an unsupported input format was requested.</p>';
+			 return false;
+		}
+		
+		if (!in_array ($outputFormat, $supportedExtensions)) {
+			 echo '<p>Error: an unsupported output format was requested.</p>';
+			 return false;
+		}
+		
+		# Obtain the height and width of the source image file
+		list ($originalWidth, $originalHeight, $imageType, $imageAttributes) = getimagesize ($sourceFileName);
+		
+		# Ensure that a valid width and height have been entered
+		if (!is_numeric ($newWidth) && !is_numeric ($newHeight)) {
+			$newWidth = $originalWidth;
+			$newHeight = $originalHeight;
+		}
+		
+		# Assign the width and height, proportionally if necessary
+		$newWidth = (is_numeric ($newWidth) ? $newWidth : (($newHeight / $originalHeight) * $originalWidth));
+		$newHeight = (is_numeric ($newHeight) ? $newHeight : (($newWidth / $originalWidth) * $originalHeight));
+		
+		# Send a header if not creating an output file
+		if (!$outputFile) {
+			header ("Content-Type: image/{$inputFileExtension}");
+		}
+		
+		# Use imageMagick in preference to GD if it's available; also essential for TIF format
+		if (extension_loaded ('magickwand')) {	// This is the NEW-style imageMagick API, as documented at https://infopol.webassociates.fr/magickwand/docs/
+		/* if ($inputFileExtension == 'tiff') { */
+			
+			$magickWand = NewMagickWand ();
+			MagickReadImage ($magickWand, $sourceFileName);
+			$colourspace = MagickGetImageColorspace ($magickWand);
+			if ($colourspace == MW_CMYKColorspace) {
+				MagickSetImageColorspace ($magickWand, MW_RGBColorspace);
+			}
+			MagickResizeImage ($magickWand, $newWidth, $newHeight, MW_LanczosFilter, 0.8);
+			MagickSetImageFormat ($magickWand, strtoupper ($outputFormat));
+			
+			# Add any watermark
+			if ($watermark && is_callable ($watermark)) {
+				#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
+				$watermark ($magickWand, $newHeight);
+			}
+			
+			# Create the image
+			if ($outputFile) {
+				MagickWriteImage ($magickWand, $outputFile);
+			} else {
+				MagickEchoImageBlob ($magickWand);
+			}
+			
+		# GD-supported extensions
+		} else {
+			$functionName = 'ImageCreateFrom' . $inputFileExtension;
+			$sourceFile = $functionName ($sourceFileName);
+			$output = ImageCreateTrueColor ($newWidth, $newHeight);
+			ImageCopyResampled ($output, $sourceFile, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
+			
+			# Add any watermark
+			if ($watermark && is_callable ($watermark)) {
+				#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
+				$watermark ($output, $newHeight);
+			}
+			
+			# Create the image
+			$functionName = 'Image' . $inputFileExtension;
+			$functionName ($output, $outputFile);
 		}
 		
 		# Return true to signal success
@@ -400,35 +518,6 @@ class image
 	}
 	
 	
-	/* Function not worth bothering with, because ImageCopyResampled doesn't have a workaround
-	# Wrapper function for the imageCreate function (because PHP may not be compiled with GD2)
-	function imageCreateWrapper ($width, $height)
-	{
-		# Determine the GD version
-		#!# Check for function exists misses out GD2 compiled for PHP 4.1-4.3
-		if (!function_exists ('gd_info')) {
-			$gd2Supported = false;
-		} else {
-			$gdInfo = gd_info ();
-			$gd2Supported = (strstr ($gdInfo['GD Version'], '2.') !== false);
-		}
-		
-		# Version if GD2 support is present
-		if ($gd2Supported) {
-			return $output = ImageCreateTrueColor ($width, $height);
-		}
-		
-		# Version if GD2 support is not present
-		$output = imagecreate ($width, $height);
-		$temporaryFile = './temporary.jpg';
-		imageJPEG ($output, $temporaryFile);
-		$output = imagecreatefromjpeg ($temporaryFile);
-		unlink ($temporaryFile);
-		return $output;
-	}
-	*/
-	
-	
 	# Function to work out the dimensions of a scaled image
 	function scale ($imageLocation, $size)
 	{
@@ -449,7 +538,7 @@ class image
 	}
 	
 	
-	# Function to perform image renaming; WARNING: Only use if you know what you're doing!
+	# Function to perform image renaming; WARNING: Only use if you know what you're doing - this is quite a specialised function!
 	function renaming ($directory, $secondsOffset = 21600, $sortByDateNotName = false)
 	{
 		# Get the files
