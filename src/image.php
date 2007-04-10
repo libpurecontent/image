@@ -1,5 +1,13 @@
 <?php
 
+# Class to create various image manipulation -related static methods
+# Version 1.0.0
+
+# Licence: GPL
+# (c) Martin Lucas-Smith, University of Cambridge
+# More info: http://download.geog.cam.ac.uk/projects/directories/
+
+
 # Ensure the pureContent framework is loaded and clean server globals
 require_once ('pureContent.php');
 
@@ -31,12 +39,10 @@ class image
 	
 	
 	# Function to provide a gallery with comments underneath
-	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false, $exclude = array ())
+	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false, $exclude = array (), $includeLinkPoints = false)
 	{
 		# Allow the script to take longer to run (particularly the first time)
 		ini_set ('max_execution_time', 120);
-		
-//		if ($orderByCaptionOrder) {echo $orderByCaptionOrder;}
 		
 		# Define the current directory, ensuring it ends with a slash and ensuring that spaces are converted
 		$directory = dirname ($_SERVER['REQUEST_URI'] . ((substr ($_SERVER['REQUEST_URI'], -1) == '/') ? 'index.html' : ''));
@@ -51,7 +57,7 @@ class image
 		}
 		
 		# Get the list of images in the directory
-		$files = self::getImageList ($directory);
+		$files = image::getImageList ($directory);
 		
 		# Show a message if there are no files in the directory and exit the function
 		if (!$files) {
@@ -72,6 +78,8 @@ class image
 			}
 			if (!is_dir ($thumbnailServerDirectory)) {$thumbnailsDirectory = false;}
 		}
+		
+		#!# orderByCaptionOrder not yet supported; here needs to loop through the captions rather than the found images then test for existence
 		
 		# Loop through each file and construct the HTML
 		foreach ($files as $file => $attributes) {
@@ -94,10 +102,10 @@ class image
 					$imageLocation = $directory . $file;
 					
 					# Get the size of the main image
-					list ($width, $height) = self::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
+					list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
 					
 					# Attempt to resize; if this fails, do not add the image to the gallery
-					if (!self::resize ($imageLocation, $attributes['extension'], $width, $height, $thumbnailsDirectory . $file)) {
+					if (!image::resize ($imageLocation, $attributes['extension'], $width, $height, $thumbnailsDirectory . $file)) {
 						continue;
 					}
 				}
@@ -110,7 +118,7 @@ class image
 			} else {
 				
 				# Get the width of the new image
-				list ($width, $height) = self::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
+				list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
 				
 				# Define the link
 				$link = '<a href="' . rawurlencode ($file) . '" target="_blank" rel="lightbox[group]"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . rawurlencode ($file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
@@ -126,10 +134,11 @@ class image
 			
 			# Define the HTML
 			#!# Find a more generic way of making id attributes safe
+			$id = 'image' . str_replace (array (' ', '+', "'", ), '__', $attributes['name']);
 			$html .= "\n" . '
-			<div class="image" id="image' . str_replace (array (' ', '+', "'", ), '__', $attributes['name']) . '">
+			<div class="image" id="' . $id . '">
 				' . $link . '
-				<p>' . $caption . '</p>
+				<p>' . ($includeLinkPoints ? '<a href="#' . $id . '">#</a> ' : '') . $caption . '</p>
 			</div>';
 		}
 		
@@ -431,7 +440,7 @@ class image
 	function renaming ($directory, $secondsOffset = 21600, $sortByDateNotName = false)
 	{
 		# Get the files
-		$files = self::getImageList ($directory);
+		$files = image::getImageList ($directory);
 		if (!$files) {return false;}
 		
 		# Get the date for each file
