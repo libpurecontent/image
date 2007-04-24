@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.0.0
+# Version 1.0.1
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -219,12 +219,12 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $inputImageIsServerLocation = false, $watermark = false)
+	function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
 	{
 		# Decode the $sourceFile to remove HTML entities
-		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerLocation ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFileName));
+		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFileName));
 		if ($outputFile) {
-			$outputFile = str_replace ('//', '/', $_SERVER['DOCUMENT_ROOT'] . str_replace ('%20', ' ', $outputFile));
+			$outputFile = str_replace ('//', '/', ($outputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $outputFile));
 		}
 		
 		# Check that the file exists
@@ -307,6 +307,7 @@ class image
 			
 		# GD-supported extensions
 		} else {
+		
 			$functionName = 'ImageCreateFrom' . $inputFileExtension;
 			$sourceFile = $functionName ($sourceFileName);
 			$output = ImageCreateTrueColor ($newWidth, $newHeight);
