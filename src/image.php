@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.0.1
+# Version 1.0.2
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -105,7 +105,7 @@ class image
 					list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
 					
 					# Attempt to resize; if this fails, do not add the image to the gallery
-					if (!image::resize ($imageLocation, $attributes['extension'], $width, $height, $thumbnailsDirectory . $file)) {
+					if (!image::resize ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $attributes['extension'], $width, $height, $_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory . $file)) {
 						continue;
 					}
 				}
