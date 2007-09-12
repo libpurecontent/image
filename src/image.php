@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.0.3
+# Version 1.0.4
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -244,6 +244,7 @@ class image
 		# Obtain the source image file extension
 		$inputFileExtension = strtolower (substr (strrchr ($sourceFileName, '.'), 1));
 		$outputFormat = strtolower ($outputFormat);
+		$outputFileExtension = $outputFormat;
 		
 		# Ensure the format is supported
 		$supportedExtensions = array ('jpeg', 'gif', 'png');
@@ -262,7 +263,11 @@ class image
 		}
 		
 		# Obtain the height and width of the source image file
-		list ($originalWidth, $originalHeight, $imageType, $imageAttributes) = getimagesize ($sourceFileName);
+		if (!$result = @getimagesize ($sourceFileName)) {
+			echo "\n<p>Error: the file could not be read; most likely it is not a valid image.</p>";
+			return false;
+		}
+		list ($originalWidth, $originalHeight, $imageType, $imageAttributes) = $result;
 		
 		# Ensure that a valid width and height have been entered
 		if (!is_numeric ($newWidth) && !is_numeric ($newHeight)) {
@@ -273,11 +278,6 @@ class image
 		# Assign the width and height, proportionally if necessary
 		$newWidth = (is_numeric ($newWidth) ? $newWidth : (($newHeight / $originalHeight) * $originalWidth));
 		$newHeight = (is_numeric ($newHeight) ? $newHeight : (($newWidth / $originalWidth) * $originalHeight));
-		
-		# Send a header if not creating an output file
-		if (!$outputFile) {
-			header ("Content-Type: image/{$inputFileExtension}");
-		}
 		
 		# Use imageMagick in preference to GD if it's available; also essential for TIF format
 		if (extension_loaded ('magickwand')) {	// This is the NEW-style imageMagick API, as documented at https://infopol.webassociates.fr/magickwand/docs/
@@ -302,13 +302,21 @@ class image
 			if ($outputFile) {
 				MagickWriteImage ($magickWand, $outputFile);
 			} else {
+				header ("Content-Type: image/{$outputFileExtension}");
 				MagickEchoImageBlob ($magickWand);
 			}
 			
 		# GD-supported extensions
 		} else {
 			
+			# Determine the function to use and ensure it exists in the PHP installation
 			$functionName = 'ImageCreateFrom' . $inputFileExtension;
+			if (!function_exists ($functionName)) {
+				echo "\n<p>Error: support for generating images from {$inputFileExtension} files is not available on this server.</p>";
+				return false;
+			}
+			
+			# Resize the image
 			$sourceFile = $functionName ($sourceFileName);
 			$output = ImageCreateTrueColor ($newWidth, $newHeight);
 			ImageCopyResampled ($output, $sourceFile, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
@@ -319,11 +327,18 @@ class image
 				$watermark ($output, $newHeight);
 			}
 			
+			# Determine the function to use and ensure it exists in the PHP installation
+			$functionName = 'Image' . $outputFormat;
+			if (!function_exists ($functionName)) {
+				echo "\n<p>Error: support for generating {$outputFileExtension} files is not available on this server.</p>";
+				return false;
+			}
+			
 			# Create the image
-			$functionName = 'Image' . $inputFileExtension;
 			if ($outputFile) {
 				$functionName ($output, $outputFile);
 			} else {
+				header ("Content-Type: image/{$outputFileExtension}");
 				$functionName ($output);
 			}
 		}
