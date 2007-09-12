@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.0.2
+# Version 1.0.3
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -126,7 +126,7 @@ class image
 			
 			# Define the caption
 			if ($captions === true) {
-				$caption = '<strong>' . $file . '</strong> [' . round ($attributes['size'] / '1024', -1) . ' KB]<br />' . strftime ('%a %d/%b/%Y, %l:%M%p', $attributes['time']);
+				$caption = '<strong>' . htmlentities ($file) . '</strong> [' . round ($attributes['size'] / '1024', -1) . ' KB]<br />' . strftime ('%a %d/%b/%Y, %l:%M%p', $attributes['time']);
 			} else {
 				# Set the caption if a comment exists
 				$caption = (isSet ($captions[$file]) ? $captions[$file] : '&nbsp;');
@@ -222,13 +222,13 @@ class image
 	function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
 	{
 		# Decode the $sourceFile to remove HTML entities
-		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $sourceFileName));
+		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . urldecode ($sourceFileName));
 		if ($outputFile) {
-			$outputFile = str_replace ('//', '/', ($outputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . str_replace ('%20', ' ', $outputFile));
+			$outputFile = str_replace ('//', '/', ($outputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . urldecode ($outputFile));
 		}
 		
-		# Check that the file exists
-		if (!file_exists ($sourceFileName)) {
+		# Check that the file exists and is readable
+		if (!file_exists ($sourceFileName) || !is_readable ($sourceFileName)) {
 			echo '<p>Error: the selected file could not be found.</p>';
 			return false;
 		}
@@ -307,7 +307,7 @@ class image
 			
 		# GD-supported extensions
 		} else {
-		
+			
 			$functionName = 'ImageCreateFrom' . $inputFileExtension;
 			$sourceFile = $functionName ($sourceFileName);
 			$output = ImageCreateTrueColor ($newWidth, $newHeight);
