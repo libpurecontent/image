@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.0.4
+# Version 1.0.5
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -202,7 +202,7 @@ class image
 		
 		# Validate and obtain matches for a pattern of the (i) 6-digit reverse-date (ii) letter(s) and (iii) [discarded] file extension
 		if ((!eregi ('([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)', $a, $matchesA)) || (!eregi ('([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)', $b, $matchesB))) {
-			return NULL;
+			return strcmp ($a, $b);
 		}
 		
 		# Compare the numeric portion
