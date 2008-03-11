@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.0.5
+# Version 1.1.0
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -126,7 +126,7 @@ class image
 			
 			# Define the caption
 			if ($captions === true) {
-				$caption = '<strong>' . htmlentities ($file) . '</strong> [' . round ($attributes['size'] / '1024', -1) . ' KB]<br />' . strftime ('%a %d/%b/%Y, %l:%M%p', $attributes['time']);
+				$caption = '<strong>' . htmlspecialchars ($file) . '</strong> [' . round ($attributes['size'] / '1024', -1) . ' KB]<br />' . strftime ('%a %d/%b/%Y, %l:%M%p', $attributes['time']);
 			} else {
 				# Set the caption if a comment exists
 				$caption = (isSet ($captions[$file]) ? $captions[$file] : '&nbsp;');
