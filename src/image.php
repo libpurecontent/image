@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.0
+# Version 1.1.1
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -222,14 +222,20 @@ class image
 	function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
 	{
 		# Decode the $sourceFile to remove HTML entities
-		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . urldecode ($sourceFileName));
+		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerFullPath ? $sourceFileName : $_SERVER['DOCUMENT_ROOT'] . urldecode ($sourceFileName)));
 		if ($outputFile) {
-			$outputFile = str_replace ('//', '/', ($outputImageIsServerFullPath ? '' : $_SERVER['DOCUMENT_ROOT']) . urldecode ($outputFile));
+			$outputFile = str_replace ('//', '/', ($outputImageIsServerFullPath ? $outputFile : $_SERVER['DOCUMENT_ROOT'] . urldecode ($outputFile)));
 		}
 		
 		# Check that the file exists and is readable
-		if (!file_exists ($sourceFileName) || !is_readable ($sourceFileName)) {
-			echo '<p>Error: the selected file could not be found.</p>';
+		if (!file_exists ($sourceFileName)) {
+			echo "<p>Error: the selected file ({$sourceFileName}) could not be found.</p>";
+			return false;
+		}
+		
+		# Check that the file exists and is readable
+		if (!is_readable ($sourceFileName)) {
+			echo "<p>Error: the selected file ({$sourceFileName}) could not be read.</p>";
 			return false;
 		}
 		
