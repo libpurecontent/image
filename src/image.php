@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.1
+# Version 1.1.2
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -237,6 +237,12 @@ class image
 		if (!is_readable ($sourceFileName)) {
 			echo "<p>Error: the selected file ({$sourceFileName}) could not be read.</p>";
 			return false;
+		}
+		
+		# Check that the file is not of zero size
+		if (!filesize ($sourceFileName)) {
+			// No error message, as this is simply ending early to avoid unnecessary processing
+			return true;
 		}
 		
 		# Ensure the output file directory exists if files are being outputted
