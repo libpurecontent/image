@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.2
+# Version 1.1.3
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -100,6 +100,9 @@ class image
 					
 					# Determine the image location
 					$imageLocation = $directory . $file;
+					
+					# Ensure the image is readable; skip if not
+					if (!is_readable ($imageLocation)) {continue;}
 					
 					# Get the size of the main image
 					list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
@@ -329,6 +332,7 @@ class image
 			}
 			
 			# Resize the image
+			#!# If this line fails because the image is corrupt, then further processing should be stopped
 			$sourceFile = $functionName ($sourceFileName);
 			$output = ImageCreateTrueColor ($newWidth, $newHeight);
 			ImageCopyResampled ($output, $sourceFile, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
@@ -447,8 +451,15 @@ class image
 	# Function to work out the dimensions of a scaled image
 	function scale ($imageLocation, $size)
 	{
+		# End if the file is readable
+		if (!is_readable ($imageLocation)) {return array (NULL, NULL);}
+		
 		# Get the image's height and width
-		list ($width, $height, $type, $imageSize) = getimagesize ($imageLocation);
+		$result = getimagesize ($imageLocation);
+		if (empty ($result)) {return array (NULL, NULL);}
+		
+		# Assign the results
+		list ($width, $height, $type, $imageSize) = $result;
 		
 		# Perform the scalings
 		if ($width > $height) {
