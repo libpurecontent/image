@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.3
+# Version 1.1.4
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -551,6 +551,63 @@ class image
 		
 		# Return the new width and height
 		return array ($width, $height);
+	}
+	
+	
+	# Function to deal with uploaded images
+	#!# Ideally integrate into ultimateForm
+	function resizeAndReformat ($image, $imageStoreRoot, $outputName /*= false*/, $imageMaxSize, $imageOutputFormat /*, $supportedImageExtensions */)
+	{
+		# Ensure there is an image
+		if ($image && is_array ($image) && isSet ($image[0]) && (!empty ($image[0])) && file_exists ($imageStoreRoot . trim ($image[0]))) {
+			list ($width, $height, $type, $attributes) = getimagesize ($imageStoreRoot . $image[0]);
+			
+			# Perform resizing if the image width/height/format is not compliant
+			if (($width > $imageMaxSize) || ($height > $imageMaxSize) || (substr ($imageStoreRoot . $image[0], (0 - strlen ('.' . $imageOutputFormat))) != ('.' . $imageOutputFormat))) {
+				$newWidth = ($width > $imageMaxSize ? $imageMaxSize : $width);
+				$inputFile = $imageStoreRoot . $image[0];
+				//$outputFile = $imageStoreRoot . ($outputName ? $outputName : ereg_replace ('(' . implode ('|', $supportedImageExtensions) . ')$', ".{$imageOutputFormat}", $image[0]));
+				$outputFile = $imageStoreRoot . $outputName;
+				image::resize ($imageStoreRoot . $image[0], $imageOutputFormat, $newWidth, $newHeight = '', $outputFile);
+				
+				# Remove the old file if it's a different file extension
+				if ($inputFile != $outputFile) {
+					unlink ($inputFile);
+				}
+			}
+		}
+	}
+	
+	
+	# Function to define the HTML for an image where the extension is not certain; NB $imagesLocation is slash-terminated
+	#!# This is really not very efficient. It might be better to archive off the old files and then do some fnmatch routine
+	function fnmatchImageHtml ($itemBasename, $imagesLocation, $altText = 'Image', $supportedImageExtensions = array ('.jpg', '.gif', '.jpeg', '.png', '.JPG', '.GIF', '.JPEG', '.PNG', ), $preventCaching = true)
+	{
+		# Start with no file found
+		$file = false;
+		
+		# Find the most recent file which complies with the file extension rules
+		$filemtime = 0;
+		foreach ($supportedImageExtensions as $supportedImageExtension) {
+			$imageOnServer = $_SERVER['DOCUMENT_ROOT'] . $imagesLocation . $itemBasename . $supportedImageExtension;
+			if (file_exists ($imageOnServer)) {
+				$thisFilemtime = filemtime ($imageOnServer);
+				if ($thisFilemtime > $filemtime) {
+					$filemtime = $thisFilemtime;
+					$file = $imageOnServer;
+					$extension = $supportedImageExtension;
+				}
+			}
+		}
+		
+		# Compile the HTML; the random number is added to prevent caching
+		if ($file) {
+			list ($width, $height, $type, $attributes) = getimagesize ($file);
+			return $imageHtml = '<img alt="' . $altText . '" src="' . $imagesLocation . $itemBasename . $extension . ($preventCaching ? '?' . rand (1, 999) : '') . '" ' . $attributes . ' class="right" />';
+		}
+		
+		# Otherwise return an empty string
+		return '';
 	}
 }
 
