@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.4
+# Version 1.1.5
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -74,7 +74,8 @@ class image
 		if ($thumbnailsDirectory) {
 			$thumbnailServerDirectory = $_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory;
 			if (!is_dir ($thumbnailServerDirectory) && is_writable ($_SERVER['DOCUMENT_ROOT'] . $directory)) {
-				mkdir ($thumbnailServerDirectory, 0777);
+				umask (0);
+				mkdir ($thumbnailServerDirectory, 0775);
 			}
 			if (!is_dir ($thumbnailServerDirectory)) {$thumbnailsDirectory = false;}
 		}
@@ -251,8 +252,8 @@ class image
 		# Ensure the output file directory exists if files are being outputted
 		if ($outputFile) {
 			if (!is_dir ($dirname = dirname ($outputFile))) {
-				umask (0000);
-				mkdir ($dirname, 0770, true);
+				umask (0);
+				mkdir ($dirname, 0775, true);
 			}
 		}
 		
