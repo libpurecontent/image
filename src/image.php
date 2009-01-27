@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.5
+# Version 1.1.6
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -559,17 +559,17 @@ class image
 	#!# Ideally integrate into ultimateForm
 	function resizeAndReformat ($image, $imageStoreRoot, $outputName /*= false*/, $imageMaxSize, $imageOutputFormat /*, $supportedImageExtensions */)
 	{
-		# Ensure there is an image
-		if ($image && is_array ($image) && isSet ($image[0]) && (!empty ($image[0])) && file_exists ($imageStoreRoot . trim ($image[0]))) {
-			list ($width, $height, $type, $attributes) = getimagesize ($imageStoreRoot . $image[0]);
+		# Ensure there is an image and that it exists and is readable
+		if ($image && is_readable ($imageStoreRoot . trim ($image))) {
+			list ($width, $height, $type, $attributes) = getimagesize ($imageStoreRoot . $image);
 			
 			# Perform resizing if the image width/height/format is not compliant
-			if (($width > $imageMaxSize) || ($height > $imageMaxSize) || (substr ($imageStoreRoot . $image[0], (0 - strlen ('.' . $imageOutputFormat))) != ('.' . $imageOutputFormat))) {
+			if (($width > $imageMaxSize) || ($height > $imageMaxSize) || (substr ($imageStoreRoot . $image, (0 - strlen ('.' . $imageOutputFormat))) != ('.' . $imageOutputFormat))) {
 				$newWidth = ($width > $imageMaxSize ? $imageMaxSize : $width);
-				$inputFile = $imageStoreRoot . $image[0];
-				//$outputFile = $imageStoreRoot . ($outputName ? $outputName : ereg_replace ('(' . implode ('|', $supportedImageExtensions) . ')$', ".{$imageOutputFormat}", $image[0]));
+				$inputFile = $imageStoreRoot . $image;
+				//$outputFile = $imageStoreRoot . ($outputName ? $outputName : ereg_replace ('(' . implode ('|', $supportedImageExtensions) . ')$', ".{$imageOutputFormat}", $image));
 				$outputFile = $imageStoreRoot . $outputName;
-				image::resize ($imageStoreRoot . $image[0], $imageOutputFormat, $newWidth, $newHeight = '', $outputFile);
+				image::resize ($imageStoreRoot . $image, $imageOutputFormat, $newWidth, $newHeight = '', $outputFile);
 				
 				# Remove the old file if it's a different file extension
 				if ($inputFile != $outputFile) {
@@ -582,7 +582,7 @@ class image
 	
 	# Function to define the HTML for an image where the extension is not certain; NB $imagesLocation is slash-terminated
 	#!# This is really not very efficient. It might be better to archive off the old files and then do some fnmatch routine
-	function fnmatchImageHtml ($itemBasename, $imagesLocation, $altText = 'Image', $supportedImageExtensions = array ('.jpg', '.gif', '.jpeg', '.png', '.JPG', '.GIF', '.JPEG', '.PNG', ), $preventCaching = true)
+	function fnmatchImageHtml ($itemBasename, $imagesLocation, $altText = 'Image', $supportedImageExtensions = array ('.jpg', '.gif', '.jpeg', '.png', '.JPG', '.GIF', '.JPEG', '.PNG', ), $preventCaching = true, $returnName = false)
 	{
 		# Start with no file found
 		$file = false;
@@ -599,6 +599,11 @@ class image
 					$extension = $supportedImageExtension;
 				}
 			}
+		}
+		
+		# Return the filename instead if required
+		if ($returnName) {
+			return $file;
 		}
 		
 		# Compile the HTML; the random number is added to prevent caching
