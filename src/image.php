@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.7
+# Version 1.1.8
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -458,25 +458,28 @@ class image
 	
 	
 	# Function to work out the dimensions of a scaled image
-	function scale ($imageLocation, $size)
+	private function scale ($file, $size = false)
 	{
 		# End if the file is readable
-		if (!is_readable ($imageLocation)) {return array (NULL, NULL);}
+		if (!is_readable ($file)) {return array (NULL, NULL);}
 		
 		# Get the image's height and width
-		$result = getimagesize ($imageLocation);
+		$result = getimagesize ($file);
 		if (empty ($result)) {return array (NULL, NULL);}
 		
 		# Assign the results
 		list ($width, $height, $type, $imageSize) = $result;
 		
+		# If size is false, use the original
+		if (!$size) {return array ($width, $height);}
+		
 		# Perform the scalings
 		if ($width > $height) {
 			$scaledWidth = $size;
-			$scaledHeight = $height * ($scaledWidth / $width);
+			$scaledHeight = round ($height * ($scaledWidth / $width));
 		} else {
 			$scaledHeight = $size;
-			$scaledWidth = $width * ($scaledHeight / $height);
+			$scaledWidth = round ($width * ($scaledHeight / $height));
 		}
 		
 		# Return the width and height
