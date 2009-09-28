@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.8
+# Version 1.1.9
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -373,6 +373,36 @@ class image
 	}
 	
 	
+	# Function to resize within non-square bounds to within new bounds; basically has the same API as resize
+	public function resizeWithinBoundingBox ($sourceFileName, $outputFormat = 'jpg', $boxWidth, $boxHeight, $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
+	{
+		# End if not readable
+		if (!is_readable ($sourceFileName)) {return false;}
+		
+		# Set the desired ratio
+		$desiredRatio = ($boxWidth / $boxHeight);
+		
+		# Set the image of the supplied file
+		list ($width, $height, $type, $attributes) = getimagesize ($sourceFileName);
+		$uploadedRatio = ($width / $height);
+		
+		# Scale
+		if ($uploadedRatio > $desiredRatio) { // i.e. image is wider
+			$newWidth = $boxWidth;
+			$newHeight = false;	// auto
+		} else if ($uploadedRatio < $desiredRatio) { // i.e. image is taller
+			$newWidth = false;	// auto
+			$newHeight = $boxHeight;
+		} else {	// i.e. image is correct ratio
+			$newWidth = $boxWidth;
+			$newHeight = $boxHeight;
+		}
+		
+		# Resize
+		self::resize ($sourceFileName, $outputFormat, $newWidth, $newHeight, $outputFile, $watermark, $inputImageIsServerFullPath, $outputImageIsServerFullPath);
+	}
+	
+	
 	# Function to display a gallery of files
 	function switchableGallery ()
 	{
@@ -458,7 +488,7 @@ class image
 	
 	
 	# Function to work out the dimensions of a scaled image
-	private function scale ($file, $size = false)
+	public function scale ($file, $size = false)
 	{
 		# End if the file is readable
 		if (!is_readable ($file)) {return array (NULL, NULL);}
@@ -625,6 +655,35 @@ class image
 		
 		# Otherwise return an empty string
 		return '';
+	}
+	
+	
+	# Function to serve an image file file rather than directly access it through a URL
+	public function serve ($file)
+	{
+		# Ensure the extension is valid
+		$extension = strtolower (pathinfo ($file, PATHINFO_EXTENSION));
+		$validExtensions = array (
+			'jpg' => 'image/jpeg',
+			'png' => 'image/png',
+			'gif' => 'image/gif',
+			'tif' => 'image/tif',
+		);
+		if (!array_key_exists ($extension, $validExtensions)) {
+			#!# Probably should be access denied
+			header ('HTTP/1.0 404 Not Found');
+			return false;
+		}
+		
+		# Check the file is readable
+		if (!is_readable ($file)) {
+			header ('HTTP/1.0 404 Not Found');
+			return false;
+		}
+		
+		# Send the file, with the correct header
+		header ("content-type: {$validExtensions[$extension]}"); 
+		readfile ($file);
 	}
 }
 
