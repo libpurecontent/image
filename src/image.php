@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.1.9
+# Version 1.2.0
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -118,7 +118,7 @@ class image
 				list ($width, $height, $type, $imageSize) = getimagesize ($_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory . $file);
 				
 				# Define the link
-				$link = '<a href="' . rawurlencode ($file) . '" target="_blank" rel="lightbox[group]"><img src="' . str_replace (' ', '%20', $thumbnailsDirectory) . rawurlencode ($file) . '" ' . $imageSize . ' alt="Photograph" /></a>';
+				$link = '<a href="' . rawurlencode ($file) . '" target="_blank" class="noarrow" rel="lightbox[group]"><img src="' . str_replace (' ', '%20', $thumbnailsDirectory) . rawurlencode ($file) . '" ' . $imageSize . ' alt="Photograph" /></a>';
 			} else {
 				
 				# Get the width of the new image
@@ -169,7 +169,7 @@ class image
 		$root = ((substr ($root, -1) == '/') ? substr ($root, 0, -1) : $root);
 		
 		# Ensure the image type is supported
-		if (!eregi ('.(jpg|jpeg|gif|png)', $image)) {
+		if (!preg_match ('/.(jpg|jpeg|gif|png)/', $image)) {
 			#!# Change to throwing 404
 			echo "<p>\nThat image format is not supported.</p>";
 			return false;
@@ -205,7 +205,7 @@ class image
 		if ($a == $b) {return 0;}
 		
 		# Validate and obtain matches for a pattern of the (i) 6-digit reverse-date (ii) letter(s) and (iii) [discarded] file extension
-		if ((!eregi ('([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)', $a, $matchesA)) || (!eregi ('([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)', $b, $matchesB))) {
+		if ((!preg_match ('/([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)/', $a, $matchesA)) || (!preg_match ('/([0-9]{6})([a-z]+).(gif|jpg|jpeg|png)/', $b, $matchesB))) {
 			return strcmp ($a, $b);
 		}
 		
@@ -608,7 +608,7 @@ class image
 			if (($width > $imageMaxSize) || ($height > $imageMaxSize) || (substr ($imageStoreRoot . $image, (0 - strlen ('.' . $imageOutputFormat))) != ('.' . $imageOutputFormat))) {
 				$newWidth = ($width > $imageMaxSize ? $imageMaxSize : $width);
 				$inputFile = $imageStoreRoot . $image;
-				//$outputFile = $imageStoreRoot . ($outputName ? $outputName : ereg_replace ('(' . implode ('|', $supportedImageExtensions) . ')$', ".{$imageOutputFormat}", $image));
+				//$outputFile = $imageStoreRoot . ($outputName ? $outputName : preg_replace ('/(' . implode ('|', $supportedImageExtensions) . ')$/', ".{$imageOutputFormat}", $image));
 				$outputFile = $imageStoreRoot . $outputName;
 				image::resize ($imageStoreRoot . $image, $imageOutputFormat, $newWidth, $newHeight = '', $outputFile);
 				
