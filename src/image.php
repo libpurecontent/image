@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.2.0
+# Version 1.2.1
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -159,13 +159,12 @@ class image
 	   # RewriteEngine On
 	   # RewriteRule ^/locationOfPagesAndImages/([0-9]+).([0-9]+).html$ /images/pagemaker.html?image=$1.$2.png [passthrough]
 	*/
-	function pagemaker ()
+	function pagemaker ($root = false)
 	{
 		# Get the image
 		$image = (isSet ($_GET['image']) ? $_GET['image'] : '');
 		
 		# Get root
-		$root = (isSet ($_GET['root']) ? $_GET['root'] : '');
 		$root = ((substr ($root, -1) == '/') ? substr ($root, 0, -1) : $root);
 		
 		# Ensure the image type is supported
@@ -488,6 +487,7 @@ class image
 	
 	
 	# Function to work out the dimensions of a scaled image
+	#!# Duplication with scaledImageDimensions
 	public function scale ($file, $size = false)
 	{
 		# End if the file is readable
@@ -569,6 +569,7 @@ class image
 	
 	
 	# Function to return the image dimensions of an image when scaled
+	#!# Duplication with scale
 	function scaledImageDimensions ($width, $height, $maximumDimension)
 	{
 		# Ensure the height and maximum dimension is legal or stop execution
