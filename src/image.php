@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.2.2
+# Version 1.3.0
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -16,7 +16,7 @@ require_once ('pureContent.php');
 class image
 {
 	# Function to get a list of images in a directory
-	function getImageList ($directory)
+	public static function getImageList ($directory)
 	{
 		# Load the directory support library
 		require_once ('directories.php');
@@ -39,7 +39,7 @@ class image
 	
 	
 	# Function to provide a gallery with comments underneath
-	function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false, $exclude = array (), $includeLinkPoints = false)
+	public static function gallery ($captions = array (), $thumbnailsDirectory = 'thumbnails/', $size = 400, $imageGenerator = '/images/generator', $orderByCaptionOrder = false, $exclude = array (), $includeLinkPoints = false)
 	{
 		# Allow the script to take longer to run (particularly the first time)
 		ini_set ('max_execution_time', 120);
@@ -65,7 +65,7 @@ class image
 		}
 		
 		# Sort the keys, enabling e.g. 030405b.jpg to come before 030405aa.jpg
-		uksort ($files, array ('image', 'imageNameSort'));
+		uksort ($files, array ('self', 'imageNameSort'));
 		
 		# Start the HTML block
 		$html = "\n\t" . '<div class="gallery">';
@@ -159,7 +159,7 @@ class image
 	   # RewriteEngine On
 	   # RewriteRule ^/locationOfPagesAndImages/([0-9]+).([0-9]+).html$ /images/pagemaker.html?image=$1.$2.png [passthrough]
 	*/
-	function pagemaker ($root = false)
+	public static function pagemaker ($root = false)
 	{
 		# Get the image
 		$image = (isSet ($_GET['image']) ? $_GET['image'] : '');
@@ -198,7 +198,7 @@ class image
 	
 	
 	# Helper function to sort by key length
-	function imageNameSort ($a, $b)
+	public static function imageNameSort ($a, $b)
 	{
 		# If they are the same, return 0 [This should never arise]
 		if ($a == $b) {return 0;}
@@ -222,7 +222,7 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
+	public static function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
 	{
 		# Decode the $sourceFile to remove HTML entities
 		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerFullPath ? $sourceFileName : $_SERVER['DOCUMENT_ROOT'] . urldecode ($sourceFileName)));
@@ -398,7 +398,7 @@ class image
 	
 	
 	# Function to resize within non-square bounds to within new bounds; basically has the same API as resize
-	public function resizeWithinBoundingBox ($sourceFileName, $outputFormat = 'jpg', $boxWidth, $boxHeight, $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
+	public static function resizeWithinBoundingBox ($sourceFileName, $outputFormat = 'jpg', $boxWidth, $boxHeight, $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
 	{
 		# End if not readable
 		if (!is_readable ($sourceFileName)) {return false;}
@@ -428,7 +428,7 @@ class image
 	
 	
 	# Function to display a gallery of files
-	function switchableGallery ()
+	public static function switchableGallery ()
 	{
 		# Get a listing of files in the current directory (this assumes the current page is called index.html)
 		require_once ('directories.php');
@@ -513,7 +513,7 @@ class image
 	
 	# Function to work out the dimensions of a scaled image
 	#!# Duplication with scaledImageDimensions
-	public function scale ($file, $size = false)
+	public static function scale ($file, $size = false)
 	{
 		# End if the file is readable
 		if (!is_readable ($file)) {return array (NULL, NULL);}
@@ -543,7 +543,7 @@ class image
 	
 	
 	# Function to perform image renaming; WARNING: Only use if you know what you're doing - this is quite a specialised function!
-	function renaming ($directory, $secondsOffset = 21600, $sortByDateNotName = false)
+	public static function renaming ($directory, $secondsOffset = 21600, $sortByDateNotName = false)
 	{
 		# Get the files
 		$files = image::getImageList ($directory);
@@ -595,7 +595,7 @@ class image
 	
 	# Function to return the image dimensions of an image when scaled
 	#!# Duplication with scale
-	function scaledImageDimensions ($width, $height, $maximumDimension)
+	public static function scaledImageDimensions ($width, $height, $maximumDimension)
 	{
 		# Ensure the height and maximum dimension is legal or stop execution
 		if (!is_numeric ($maximumDimension) || $maximumDimension == 0) {return false;}
@@ -624,7 +624,7 @@ class image
 	
 	# Function to deal with uploaded images
 	#!# Ideally integrate into ultimateForm
-	function resizeAndReformat ($image, $imageStoreRoot, $outputName /*= false*/, $imageMaxSize, $imageOutputFormat /*, $supportedImageExtensions */)
+	public static function resizeAndReformat ($image, $imageStoreRoot, $outputName /*= false*/, $imageMaxSize, $imageOutputFormat /*, $supportedImageExtensions */)
 	{
 		# Ensure there is an image and that it exists and is readable
 		if ($image && is_readable ($imageStoreRoot . trim ($image))) {
@@ -649,7 +649,7 @@ class image
 	
 	# Function to define the HTML for an image where the extension is not certain; NB $imagesLocation is slash-terminated
 	#!# This is really not very efficient. It might be better to archive off the old files and then do some fnmatch routine
-	function fnmatchImageHtml ($itemBasename, $imagesLocation, $altText = 'Image', $supportedImageExtensions = array ('.jpg', '.gif', '.jpeg', '.png', '.JPG', '.GIF', '.JPEG', '.PNG', ), $preventCaching = true, $returnName = false)
+	public static function fnmatchImageHtml ($itemBasename, $imagesLocation, $altText = 'Image', $supportedImageExtensions = array ('.jpg', '.gif', '.jpeg', '.png', '.JPG', '.GIF', '.JPEG', '.PNG', ), $preventCaching = true, $returnName = false)
 	{
 		# Start with no file found
 		$file = false;
@@ -685,7 +685,7 @@ class image
 	
 	
 	# Function to serve an image file file rather than directly access it through a URL
-	public function serve ($file)
+	public static function serve ($file)
 	{
 		# Ensure the extension is valid
 		$extension = strtolower (pathinfo ($file, PATHINFO_EXTENSION));
