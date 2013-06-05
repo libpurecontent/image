@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.2.1
+# Version 1.2.2
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -263,7 +263,7 @@ class image
 		
 		# Ensure the format is supported
 		$supportedExtensions = array ('jpeg', 'gif', 'png');
-		if (extension_loaded ('magickwand')) {$supportedExtensions[] = 'tiff';}	// TIFF support only available in ImageMagick
+		if (extension_loaded ('magickwand') || extension_loaded ('imagick')) {$supportedExtensions[] = 'tiff';}	// TIFF support only available in MagickWand/ImageMagick
 		if ($inputFileExtension == 'jpg') {$inputFileExtension = 'jpeg';}
 		if ($inputFileExtension == 'tif') {$inputFileExtension = 'tiff';}
 		if ($outputFormat == 'jpg') {$outputFormat = 'jpeg';}
@@ -302,9 +302,8 @@ class image
 		}
 */
 		
-		# Use imageMagick in preference to GD if it's available; also essential for TIF format
+		# Use magickWand/imageMagick in preference to GD if it's available; also essential for TIF format
 		if (extension_loaded ('magickwand')) {	// This is the NEW-style imageMagick API, as documented at https://infopol.webassociates.fr/magickwand/docs/
-		/* if ($inputFileExtension == 'tiff') { */
 			
 			$magickWand = NewMagickWand ();
 			MagickReadImage ($magickWand, $sourceFileName);
@@ -312,13 +311,13 @@ class image
 			if ($colourspace == MW_CMYKColorspace) {
 				MagickSetImageColorspace ($magickWand, MW_RGBColorspace);
 			}
-			MagickResizeImage ($magickWand, $newWidth, $newHeight, MW_LanczosFilter, 0.8);
+			MagickResizeImage ($magickWand, $newWidth, $newHeight, MW_LanczosFilter, 1);
 			MagickSetImageFormat ($magickWand, strtoupper ($outputFormat));
 			
 			# Add any watermark
 			if ($watermark && is_callable ($watermark)) {
 				#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
-				$watermark ($magickWand, $newHeight);
+				$watermark ($magickWand /* i.e. handle */, $newHeight);
 			}
 			
 			# Create the image
@@ -327,6 +326,32 @@ class image
 			} else {
 				header ("Content-Type: image/{$outputFileExtension}");
 				MagickEchoImageBlob ($magickWand);
+			}
+			
+		# imageMagick extension
+		} else if (extension_loaded ('imagick')) {
+			
+			$imagick = new Imagick ();
+			$imagick->readImage ($sourceFileName);
+			$colourspace = $imagick->getImageColorspace ();
+			if ($colourspace == imagick::COLORSPACE_CMYK) {
+				$imagick->setImageColorspace (imagick::COLORSPACE_RGB);
+			}
+			$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
+			$imagick->setImageFormat ($outputFormat);
+			
+			# Add any watermark
+			if ($watermark && is_callable ($watermark)) {
+				#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
+				$watermark ($imagick /* i.e. handle */, $newHeight);
+			}
+			
+			# Create the image
+			if ($outputFile) {
+				$imagick->writeImage ($outputFile);
+			} else {
+				header ("Content-Type: image/{$outputFileExtension}");
+				echo $imagick->getImageBlob ();
 			}
 			
 		# GD-supported extensions
