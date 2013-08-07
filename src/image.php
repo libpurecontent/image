@@ -1,11 +1,11 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.3.0
+# Version 1.3.1
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
-# More info: http://download.geog.cam.ac.uk/projects/directories/
+# More info: http://download.geog.cam.ac.uk/projects/image/
 
 
 # Ensure the pureContent framework is loaded and clean server globals
@@ -648,39 +648,40 @@ class image
 	
 	
 	# Function to define the HTML for an image where the extension is not certain; NB $imagesLocation is slash-terminated
-	#!# This is really not very efficient. It might be better to archive off the old files and then do some fnmatch routine
-	public static function fnmatchImageHtml ($itemBasename, $imagesLocation, $altText = 'Image', $supportedImageExtensions = array ('.jpg', '.gif', '.jpeg', '.png', '.JPG', '.GIF', '.JPEG', '.PNG', ), $preventCaching = true, $returnName = false)
+	#!# This is really not very efficient. It might be better to convert and archive off old files
+	public static function fnmatchImage ($itemBasename, $imagesLocation, $supportedImageExtensions = array ('.jpg', '.gif', '.jpeg', '.png', '.JPG', '.GIF', '.JPEG', '.PNG', ))
 	{
 		# Start with no file found
-		$file = false;
+		$location = false;
 		
 		# Find the most recent file which complies with the file extension rules
-		$filemtime = 0;
+		$latestFilemtime = 0;
 		foreach ($supportedImageExtensions as $supportedImageExtension) {
-			$imageOnServer = $_SERVER['DOCUMENT_ROOT'] . $imagesLocation . $itemBasename . $supportedImageExtension;
+			$tryLocation = $imagesLocation . $itemBasename . $supportedImageExtension;
+			$imageOnServer = $_SERVER['DOCUMENT_ROOT'] . $tryLocation;
 			if (file_exists ($imageOnServer)) {
-				$thisFilemtime = filemtime ($imageOnServer);
-				if ($thisFilemtime > $filemtime) {
-					$filemtime = $thisFilemtime;
-					$file = $imageOnServer;
-					$extension = $supportedImageExtension;
+				$filemtime = filemtime ($imageOnServer);
+				if ($filemtime > $latestFilemtime) {
+					$latestFilemtime = $filemtime;
+					$location = $tryLocation;
 				}
 			}
 		}
 		
-		# Return the filename instead if required
-		if ($returnName) {
-			return $file;
-		}
+		# Return the chosen location
+		return $location;
+	}
+	
+	
+	# Function to construct an image tag with sizes computed
+	public static function imgTag ($location, $altText = 'Image', $align = false, $preventCaching = true)
+	{
+		# Return empty string if no location
+		if (!$location) {return '';}
 		
 		# Compile the HTML; the random number is added to prevent caching
-		if ($file) {
-			list ($width, $height, $type, $attributes) = getimagesize ($file);
-			return $imageHtml = '<img alt="' . $altText . '" src="' . $imagesLocation . $itemBasename . $extension . ($preventCaching ? '?' . rand (1, 999) : '') . '" ' . $attributes . ' class="right" />';
-		}
-		
-		# Otherwise return an empty string
-		return '';
+		list ($width, $height, $type, $attributes) = getimagesize ($_SERVER['DOCUMENT_ROOT'] . $location);
+		return $imageHtml = '<img alt="' . htmlspecialchars ($altText) . '" title="' . htmlspecialchars ($altText) . '" src="' . $location . ($preventCaching ? '?' . rand (1, 999) : '') . '" ' . $attributes . ($align ? " align=\"{$align}\"" : '') . ' />';
 	}
 	
 	
