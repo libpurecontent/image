@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.3.3
+# Version 1.3.4
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -232,13 +232,13 @@ class image
 		
 		# Check that the file exists and is readable
 		if (!file_exists ($sourceFileName)) {
-			echo "<p>Error: the selected file ({$sourceFileName}) could not be found.</p>";
+			echo "<p>Error: the selected file could not be found.</p>";
 			return false;
 		}
 		
 		# Check that the file exists and is readable
 		if (!is_readable ($sourceFileName)) {
-			echo "<p>Error: the selected file ({$sourceFileName}) could not be read.</p>";
+			echo "<p>Error: the selected file could not be read.</p>";
 			return false;
 		}
 		
