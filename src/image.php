@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.3.4
+# Version 1.3.5
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -334,9 +334,12 @@ class image
 			$imagick = new Imagick ();
 			$imagick->readImage ($sourceFileName);
 			$colourspace = $imagick->getImageColorspace ();
+			/*
+			#!# Causes negative images; see: http://php.net/imagick.setimagecolorspace#107716 - however, commenting out (as here) seems to work fine still
 			if ($colourspace == imagick::COLORSPACE_CMYK) {
 				$imagick->setImageColorspace (imagick::COLORSPACE_RGB);
 			}
+			*/
 			$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
 			$imagick->setImageFormat ($outputFormat);
 			
