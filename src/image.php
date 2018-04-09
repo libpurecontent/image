@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.3.5
+# Version 1.3.6
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -331,30 +331,34 @@ class image
 		# imageMagick extension
 		} else if (extension_loaded ('imagick')) {
 			
-			$imagick = new Imagick ();
-			$imagick->readImage ($sourceFileName);
-			$colourspace = $imagick->getImageColorspace ();
-			/*
-			#!# Causes negative images; see: http://php.net/imagick.setimagecolorspace#107716 - however, commenting out (as here) seems to work fine still
-			if ($colourspace == imagick::COLORSPACE_CMYK) {
-				$imagick->setImageColorspace (imagick::COLORSPACE_RGB);
-			}
-			*/
-			$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
-			$imagick->setImageFormat ($outputFormat);
-			
-			# Add any watermark
-			if ($watermark && is_callable ($watermark)) {
-				#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
-				$watermark ($imagick /* i.e. handle */, $newHeight);
-			}
-			
-			# Create the image
-			if ($outputFile) {
-				$imagick->writeImage ($outputFile);
-			} else {
-				header ("Content-Type: image/{$outputFileExtension}");
-				echo $imagick->getImageBlob ();
+			try {
+				$imagick = new Imagick ();
+				$imagick->readImage ($sourceFileName);
+				$colourspace = $imagick->getImageColorspace ();
+				/*
+				#!# Causes negative images; see: http://php.net/imagick.setimagecolorspace#107716 - however, commenting out (as here) seems to work fine still
+				if ($colourspace == imagick::COLORSPACE_CMYK) {
+					$imagick->setImageColorspace (imagick::COLORSPACE_RGB);
+				}
+				*/
+				$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
+				$imagick->setImageFormat ($outputFormat);
+				
+				# Add any watermark
+				if ($watermark && is_callable ($watermark)) {
+					#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
+					$watermark ($imagick /* i.e. handle */, $newHeight);
+				}
+				
+				# Create the image
+				if ($outputFile) {
+					$imagick->writeImage ($outputFile);
+				} else {
+					header ("Content-Type: image/{$outputFileExtension}");
+					echo $imagick->getImageBlob ();
+				}
+			} catch (ImagickException $e) {
+				echo print_r ($e, true);
 			}
 			
 		# GD-supported extensions
