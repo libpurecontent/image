@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.3.6
+# Version 1.3.7
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -341,7 +341,8 @@ class image
 					$imagick->setImageColorspace (imagick::COLORSPACE_RGB);
 				}
 				*/
-				$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
+//				$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
+				$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_CATROM, 1);
 				$imagick->setImageFormat ($outputFormat);
 				
 				# Add any watermark
@@ -784,7 +785,7 @@ class iptc {
     var $file=false;
     
     
-    function iptc($filename) {
+    function __construct ($filename) {
         $size = getimagesize($filename,$info);
         $this->hasmeta = isset($info["APP13"]);
         if($this->hasmeta)
