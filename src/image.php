@@ -1,7 +1,7 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.3.7
+# Version 1.3.8
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
@@ -222,7 +222,7 @@ class image
 	
 	
 	# Function to resize an image; supported input and output formats are: jpg, png
-	public static function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true)
+	public static function resize ($sourceFileName, $outputFormat = 'jpg', $newWidth = '', $newHeight = '', $outputFile = false, $watermark = false, $inputImageIsServerFullPath = true, $outputImageIsServerFullPath = true, $cropWidth = false, $cropHeight = false)
 	{
 		# Decode the $sourceFile to remove HTML entities
 		$sourceFileName = str_replace ('//', '/', ($inputImageIsServerFullPath ? $sourceFileName : $_SERVER['DOCUMENT_ROOT'] . urldecode ($sourceFileName)));
@@ -341,9 +341,15 @@ class image
 					$imagick->setImageColorspace (imagick::COLORSPACE_RGB);
 				}
 				*/
-//				$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
-				$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_CATROM, 1);
+				$imagick->mergeImageLayers (imagick::LAYERMETHOD_MERGE);	// E.g. TIFF files can have multiple layers, resulting in wrong size or wrongly-visible elements
+				$imagick->resizeImage ($newWidth, $newHeight, imagick::FILTER_LANCZOS, 1);
 				$imagick->setImageFormat ($outputFormat);
+				
+				# Crop if required
+				#!# Currently doesn't fix the watermark position
+				if ($cropWidth && $cropHeight) {
+					$imagick->cropImage ($cropWidth, $cropHeight, (($newWidth - $cropWidth) / 2), (($newHeight - $cropHeight) / 2));
+				}
 				
 				# Add any watermark
 				if ($watermark && is_callable ($watermark)) {
@@ -726,8 +732,11 @@ class image
 			return false;
 		}
 		
+		# Send the file size
+		header ('Content-Length: ' . filesize ($file));
+		
 		# Send the file, with the correct header
-		header ("content-type: {$validExtensions[$extension]}"); 
+		header ("Content-type: {$validExtensions[$extension]}"); 
 		readfile ($file);
 	}
 }
