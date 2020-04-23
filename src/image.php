@@ -1,11 +1,11 @@
 <?php
 
 # Class to create various image manipulation -related static methods
-# Version 1.3.8
+# Version 1.3.9
 
 # Licence: GPL
 # (c) Martin Lucas-Smith, University of Cambridge
-# More info: http://download.geog.cam.ac.uk/projects/image/
+# More info: https://download.geog.cam.ac.uk/projects/image/
 
 
 # Ensure the pureContent framework is loaded and clean server globals
@@ -316,8 +316,7 @@ class image
 			
 			# Add any watermark
 			if ($watermark && is_callable ($watermark)) {
-				#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
-				$watermark ($magickWand /* i.e. handle */, $newHeight);
+				$watermark ($magickWand /* i.e. handle */, $newHeight);	// Callable directly callable from PHP7; see: https://trowski.com/2015/06/20/php-callable-paradox/
 			}
 			
 			# Create the image
@@ -353,8 +352,7 @@ class image
 				
 				# Add any watermark
 				if ($watermark && is_callable ($watermark)) {
-					#!# Needs to work for classes - is_callable is basically a mess; no way to do $class::$method in following line
-					$watermark ($imagick /* i.e. handle */, $newHeight);
+					$watermark ($imagick /* i.e. handle */, $newHeight);	// Callable directly callable from PHP7; see: https://trowski.com/2015/06/20/php-callable-paradox/
 				}
 				
 				# Create the image
