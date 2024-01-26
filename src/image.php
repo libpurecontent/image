@@ -1,9 +1,5 @@
 <?php
 
-# Ensure the pureContent framework is loaded and clean server globals
-pureContent::cleanServerGlobals ();
-
-
 # Define a class containing image-related static methods
 class image
 {
