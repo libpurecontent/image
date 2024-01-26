@@ -1,15 +1,7 @@
 <?php
 
-# Class to create various image manipulation -related static methods
-# Version 1.3.9
-
-# Licence: GPL
-# (c) Martin Lucas-Smith, University of Cambridge
-# More info: https://download.geog.cam.ac.uk/projects/image/
-
-
 # Ensure the pureContent framework is loaded and clean server globals
-require_once ('pureContent.php');
+pureContent::cleanServerGlobals ();
 
 
 # Define a class containing image-related static methods
@@ -18,9 +10,6 @@ class image
 	# Function to get a list of images in a directory
 	public static function getImageList ($directory)
 	{
-		# Load the directory support library
-		require_once ('directories.php');
-		
 		# Clean the supplied directory
 		$directory = urldecode ($directory);
 		
@@ -443,7 +432,6 @@ class image
 	public static function switchableGallery ()
 	{
 		# Get a listing of files in the current directory (this assumes the current page is called index.html)
-		require_once ('directories.php');
 		$rawFiles = directories::listFiles ($_SERVER['PHP_SELF']);
 		
 		# Loop through the list of files
