@@ -42,7 +42,7 @@ class image
 		}
 		
 		# Get the list of images in the directory
-		$files = image::getImageList ($directory);
+		$files = self::getImageList ($directory);
 		
 		# Show a message if there are no files in the directory and exit the function
 		if (!$files) {
@@ -91,10 +91,10 @@ class image
 					if (!is_readable ($imageLocation)) {continue;}
 					
 					# Get the size of the main image
-					list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
+					list ($width, $height) = self::scale ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $size);
 					
 					# Attempt to resize; if this fails, do not add the image to the gallery
-					if (!image::resize ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $attributes['extension'], $width, $height, $_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory . $file)) {
+					if (!self::resize ($_SERVER['DOCUMENT_ROOT'] . $imageLocation, $attributes['extension'], $width, $height, $_SERVER['DOCUMENT_ROOT'] . $thumbnailsDirectory . $file)) {
 						continue;
 					}
 				}
@@ -107,7 +107,7 @@ class image
 			} else {
 				
 				# Get the width of the new image
-				list ($width, $height) = image::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
+				list ($width, $height) = self::scale ($_SERVER['DOCUMENT_ROOT'] . $directory . $file, $size);
 				
 				# Define the link
 				$link = '<a href="' . rawurlencode ($file) . '" target="_blank" rel="lightbox[group]"><img src="' . $imageGenerator . '?' . $width . ',' . str_replace (' ', '%20', $directory) . rawurlencode ($file) . '" width="' . $width . '" alt="[Click for full-size image; opens in a new window]" /></a>';
@@ -542,7 +542,7 @@ class image
 	public static function renaming ($directory, $secondsOffset = 21600, $sortByDateNotName = false)
 	{
 		# Get the files
-		$files = image::getImageList ($directory);
+		$files = self::getImageList ($directory);
 		if (!$files) {return false;}
 		
 		# Get the date for each file
@@ -632,7 +632,7 @@ class image
 				$inputFile = $imageStoreRoot . $image;
 				//$outputFile = $imageStoreRoot . ($outputName ? $outputName : preg_replace ('/(' . implode ('|', $supportedImageExtensions) . ')$/', ".{$imageOutputFormat}", $image));
 				$outputFile = $imageStoreRoot . $outputName;
-				image::resize ($imageStoreRoot . $image, $imageOutputFormat, $newWidth, $newHeight = '', $outputFile);
+				self::resize ($imageStoreRoot . $image, $imageOutputFormat, $newWidth, $newHeight = '', $outputFile);
 				
 				# Remove the old file if it's a different file extension
 				if ($inputFile != $outputFile) {
