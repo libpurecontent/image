@@ -348,6 +348,7 @@ class image
 					echo $imagick->getImageBlob ();
 				}
 			} catch (ImagickException $e) {
+				#!# Dumping out a stack trace to a public UI is not acceptable - this needs to be returned as an error, and not shown by default
 				echo print_r ($e, true);
 			}
 			
@@ -361,11 +362,13 @@ class image
 				return false;
 			}
 			
-			# Resize the image
+			# Load the source file
 			#!# If this line fails because the image is corrupt, then further processing should be stopped
-			$sourceFile = $functionName ($sourceFileName);
+			$imageResource = $functionName ($sourceFileName);
+			
+			# Resize the image
 			$output = ImageCreateTrueColor ($newWidth, $newHeight);
-			ImageCopyResampled ($output, $sourceFile, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
+			ImageCopyResampled ($output, $imageResource, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
 			
 			# Add any watermark
 			if ($watermark && is_callable ($watermark)) {
@@ -846,12 +849,12 @@ class iptc {
 /*
 // Update copyright statement:
 $i = new iptc("test.jpg");
-echo $i->set(IPTC_COPYRIGHT_STRING,"Here goes the new data"); 
+echo $i->set(IPTC_COPYRIGHT_STRING,"Here goes the new data");
 $i->write();
 
 // Example read copyright string:
 $i = new iptc("test.jpg");
-echo $i->get(IPTC_COPYRIGHT_STRING); 
+echo $i->get(IPTC_COPYRIGHT_STRING);
 */
 
 
