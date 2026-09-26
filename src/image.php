@@ -366,6 +366,28 @@ class image
 			#!# If this line fails because the image is corrupt, then further processing should be stopped
 			$imageResource = $functionName ($sourceFileName);
 			
+			# Fix orientation if required
+			if (!function_exists ('exif_read_data')) {
+				echo "\n<p>Error: support for reorientating files for thumbnailing is not available on this server.</p>";
+				return false;
+			}
+			$exifToRotation = array (
+				3 => 180,
+				6 => -90,
+				8 =>  90,
+			);
+			$exif = exif_read_data ($sourceFileName);
+			if (!empty ($exif['Orientation'])) {
+				if (array_key_exists ($exif['Orientation'], $exifToRotation)) {
+					$rotation = $exifToRotation[$exif['Orientation']];
+					$imageResource = imagerotate ($imageResource, $rotation, 0);
+					if (in_array ($rotation, array (90, -90))) {	// Swap width/height if rotating by 90 degrees
+						list ($newHeight, $newWidth) = array ($newWidth, $newHeight);
+						list ($originalHeight, $originalWidth) = array ($originalWidth, $originalHeight);
+					}
+				}
+			}
+			
 			# Resize the image
 			$output = ImageCreateTrueColor ($newWidth, $newHeight);
 			ImageCopyResampled ($output, $imageResource, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
