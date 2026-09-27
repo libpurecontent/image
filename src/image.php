@@ -414,6 +414,10 @@ class image
 			}
 		}
 		
+		# Set the file modification time to match that of the original, which makes it easier for client cache code to know whether to regenerate
+		$filemtime = filemtime ($sourceFileName);
+		touch ($outputFile, $filemtime);
+		
 		# Return true to signal success
 		return true;
 	}
